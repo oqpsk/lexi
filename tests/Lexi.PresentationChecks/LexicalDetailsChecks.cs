@@ -29,8 +29,9 @@ internal static partial class Program
         Check(surface.Background is SolidColorBrush background && background.Color.A>0 && surface.BorderBrush is SolidColorBrush stroke && stroke.Color.A>0 && examples.MinHeight>=30,
             "collapsed detail controls have visible surfaces, outlines and generous hit targets");
         examples.IsChecked=true;
-        Check(Contents(ai,true).OfType<TextBox>().Where(t=>t.Text==sense.Example || t.Text==sense.ExampleChinese).All(t=>t.FontStyle==FontStyles.Italic),
-            "English and Chinese serif examples use italic text when expanded");
+        Check(Contents(ai,true).OfType<TextBox>().Single(t=>t.Text==sense.Example).FontStyle == FontStyles.Italic &&
+            Contents(ai,true).OfType<TextBox>().Single(t=>t.Text==sense.ExampleChinese).FontStyle == FontStyles.Normal,
+            "expanded examples use italic English and upright Chinese serif text");
         Check(etymologyButton.Visibility == Visibility.Visible && !popup.IsOpen && !popup.StaysOpen && popup.PlacementTarget == etymologyButton &&
             etymologyButton.Parent is InlineUIContainer && !Theme.CanDragFrom(etymologyButton),
             "etymology is an accessible headword icon with a closed, anchored light-dismiss popover");

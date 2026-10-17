@@ -28,7 +28,7 @@ public partial class MainWindow
     {
         var block = CompactText(text, 18);
         block.FontFamily = (FontFamily)FindResource(chinese ? "ChineseExampleFont" : "LexicalFont");
-        block.FontStyle = FontStyles.Italic;
+        block.FontStyle = chinese ? FontStyles.Normal : FontStyles.Italic;
         return block;
     }
 
@@ -54,7 +54,8 @@ public partial class MainWindow
         return new Border { Child = content, BorderBrush = Theme.Brush("Stroke"), BorderThickness = new(0,index == 0 ? 0 : 1,0,0), Padding = new(0,index == 0 ? 0 : 10,0,8) };
     }
 
-    private void RenderSenseContent(Panel parent, SenseView sense)
+    // indent: how far disclosure bodies indent this sense, for the read-aloud speaker column.
+    private void RenderSenseContent(Panel parent, SenseView sense, double indent = 0)
     {
         if (sense.Expansion.Length > 0)
         {
@@ -63,15 +64,15 @@ public partial class MainWindow
             fullForm.Foreground = accentBrush; fullForm.ToolTip = "英文全称";
             parent.Children.Add(fullForm);
         }
-        parent.Children.Add(CompactText(sense.Chinese, 20));
-        parent.Children.Add(CompactText(sense.English, 18));
+        parent.Children.Add(Speakable(CompactText(sense.Chinese, 20), sense.Key + ":chinese", indent));
+        parent.Children.Add(Speakable(CompactText(sense.English, 18), sense.Key + ":english", indent));
         var controls = new WrapPanel { Margin = new(0,2,0,0) }; var details = new StackPanel();
         parent.Children.Add(controls); parent.Children.Add(details);
         if (!string.IsNullOrWhiteSpace(sense.Example) || !string.IsNullOrWhiteSpace(sense.ExampleChinese))
         {
             var examples = new StackPanel();
-            if (!string.IsNullOrWhiteSpace(sense.Example)) examples.Children.Add(ExampleText(sense.Example));
-            if (!string.IsNullOrWhiteSpace(sense.ExampleChinese)) examples.Children.Add(ExampleText(sense.ExampleChinese, true));
+            if (!string.IsNullOrWhiteSpace(sense.Example)) examples.Children.Add(Speakable(ExampleText(sense.Example), sense.Key + ":example", indent + DisclosureIndent));
+            if (!string.IsNullOrWhiteSpace(sense.ExampleChinese)) examples.Children.Add(Speakable(ExampleText(sense.ExampleChinese, true), sense.Key + ":exampleChinese", indent + DisclosureIndent));
             AddDisclosure(controls, details, sense.Key + ":examples", "例句", examples);
         }
 
@@ -102,7 +103,7 @@ public partial class MainWindow
         {
             var section = new StackPanel { Margin = new(0,2,0,6) };
             section.Children.Add(SenseHeading(variant.Heading));
-            RenderSenseContent(section, variant);
+            RenderSenseContent(section, variant, indent + DisclosureIndent);
             originals.Children.Add(section);
         }
         // If the user was reading the faster model before merging, keep that
@@ -111,6 +112,8 @@ public partial class MainWindow
         AddDisclosure(controls, details, sense.Key + ":alternatives", sense.AlternativesLabel, originals, retainReading);
     }
 
+    // A disclosure body's left rule plus its padding.
+    private const double DisclosureIndent = 12;
     private void AddDisclosure(Panel controls, Panel details, string key, string label, FrameworkElement content, bool initiallyOpen = false)
     {
         var open = senseDetails.GetValueOrDefault(key, initiallyOpen);

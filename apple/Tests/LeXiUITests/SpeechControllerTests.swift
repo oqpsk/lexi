@@ -100,6 +100,27 @@ import Testing
         #expect(speech.status.isEmpty)
     }
 
+    // Each speaker controls only its own item: another one switches to it, the same one stops.
+    @Test func speakersSwitchBetweenItemsAndStopOnlyTheirOwn() async throws {
+        let (speech, host) = make()
+        host.hold = true
+        speech.toggle("serendipity", using: host)
+        while host.held == nil { await Task.yield() }
+        #expect(speech.speakingID == "heading")
+        let first = host.held
+        host.held = nil
+        speech.toggle("A happy accident.", id: "sense:english", using: host)
+        #expect(speech.speaking && speech.speakingID == "sense:english")
+        first?.resume(returning: "/nonexistent/late.mp3")
+        while host.held == nil { await Task.yield() }
+        #expect(speech.speakingID == "sense:english", "the replaced headword request does not end the definition")
+        speech.toggle("A happy accident.", id: "sense:english", using: host)
+        #expect(!speech.speaking && speech.speakingID == nil && speech.status == "发音已停止")
+        host.held?.resume(returning: "/nonexistent/late.mp3")
+        await speech.work?.value
+        #expect(speech.speakingID == nil)
+    }
+
     @Test func elevenLabsChoicesKeepSavedVoices() {
         let george = SpeechVoice(id: "JBFqnCBsd6RMkjVDRZzb", name: "George")
         let saved = SpeechVoice(id: "synthetic_private_voice", name: "Synthetic private voice")

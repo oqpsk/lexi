@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Read definitions and examples aloud on Windows and macOS. Pointing at a Chinese or English definition, an example or its translation shows a speaker in the card's left margin, which becomes a stop button while that block plays; the block is tinted pale gold while it is read. The context menu starts with 朗读, or 朗读所选文字 to read only the selected words. Speech uses the voice chosen in settings with the same cache and limits as the headword, and each speaker now stops only its own item. On macOS these blocks are AppKit text views so 朗读 joins the system text menu; VoiceOver offers it as an action.
 - Rewrite README.md as a product overview covering both platforms: lookup and translation, offline dictionaries, AI definitions and merging, subscriptions, speech, saved results, navigation and privacy.
 
 - Add LeXi for macOS (`apple/`): a SwiftUI app for macOS 26+ that bundles the self-contained `Lexi.Host` and renders its views. It supports lookup, translation, suggestions, history, back/forward navigation, regeneration, the online switch, settings with the shared validation, dictionary management, official-client status and sign-in in Terminal, and system-voice speech. Liquid Glass is limited to the toolbar, search bar, footer controls and popovers; results use the normal background with pink as an accent. Keys are left to the input method while it composes text.
@@ -23,6 +24,16 @@
 - Choose data folders per platform: Windows keeps the portable `userdata`/`data` folders; macOS uses `~/Library/Application Support/LeXi`.
 - Add `session-check` and `platform-check`, a cross-platform `Lexi.Shared.slnf`, and a macOS CI job. `scripts/Test.ps1` runs the shared checks on macOS and Linux and the WPF checks on Windows.
 - Add [FEATURES.md](FEATURES.md) for Windows/macOS parity, an affected-platforms section in the PR template, and split AGENTS.md into shared behavior and per-platform interface rules.
+
+## 0.9.18 (Windows)
+
+- Make each read-aloud row include its speaker gutter and disclosure indentation in one transparent hit area, so moving from the text to the speaker cannot hide it in the gap. Preserve the existing text positions and speaker column.
+- Center speakers on the actual first line's letterforms after layout, including English italics, Chinese fonts, wrapping and display scaling. Reposition the icon without changing row spacing.
+
+## 0.9.17 (Windows)
+
+- Build and package per-definition and per-example speech for Windows: reveal the speaker on hover, offer whole-block or selected-text reading in the context menu, and keep stop/highlight state attached to the item being read. Use the configured provider and existing audio cache.
+- Keep English examples in italic serif type and Chinese example translations in upright serif type, matching the macOS implementation.
 
 ## 0.9.16
 

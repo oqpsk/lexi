@@ -70,7 +70,7 @@ public struct MainView: View {
             if store.view.kind == .home {
                 HistoryView(store: store) { entry in setText(entry.query); submit(entry.query) }
             } else {
-                EntryView(store: store, speech: speech)
+                EntryView(store: store, speech: speech).environment(speech)
             }
         }
     }

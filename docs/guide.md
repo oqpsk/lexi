@@ -116,7 +116,7 @@ pwsh ./scripts/Install-Dictionary.ps1 -AppDirectory "$HOME/Library/Application S
 
 词条旁以 20 号文字显示音标，与词条共用文字基线，长内容自动换行。优先显示离线词典音标；缺失时独立查询并缓存 Wiktionary 的英语 IPA。悬浮音标可查看来源。仅有模型音标时在旁边显示较小的“AI”标记，悬浮可查看未核验说明；没有可靠音标时留空。
 
-点击扬声器朗读当前输入，再次点击停止。新查询会停止上一条发音。设置 → 发音提供模型、声线、试听及在线语音连接配置，默认选择 Windows 本地发音，不需要 API Key；可用声线取决于本机安装的 Windows 语音组件。
+点击扬声器朗读当前输入，再次点击停止。新查询会停止上一条发音。释义、英文释义、例句和例句译文也能朗读：鼠标移到段落上，左侧会浮现扬声器，播放中变为停止按钮，正在朗读的段落以淡金色底标出；也可以在段落上右键选择“朗读”，先选中几个词则只读选中的部分。设置 → 发音提供模型、声线、试听及在线语音连接配置，默认选择 Windows 本地发音，不需要 API Key；可用声线取决于本机安装的 Windows 语音组件。
 
 - [OpenAI TTS](https://developers.openai.com/api/docs/guides/text-to-speech)：支持 GPT-4o mini TTS、TTS-1、TTS-1 HD，声线选项随模型变化。每次最多 4096 字符。
 - [Grok TTS](https://docs.x.ai/developers/model-capabilities/audio/text-to-speech)：模型由服务管理，可选 Eve、Ara、Leo、Rex、Sal 声线；应用每次最多朗读 5000 字符。

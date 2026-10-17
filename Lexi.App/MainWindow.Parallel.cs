@@ -12,9 +12,11 @@ public partial class MainWindow
 
     private void RenderAnswerCard(AnswersView? answers)
     {
-        AiPanel.Children.Clear();
+        AiPanel.Children.Clear(); readAloudBlocks.Clear();
         if (answers is null or { Empty: true }) return;
         var card = Card(AiPanel, "", "", true);
+        // A wider left margin holds the read-aloud speakers.
+        if (card.Parent is Border frame) frame.Padding = new(16 + ReadAloudGutter - 12, frame.Padding.Top, frame.Padding.Right, frame.Padding.Bottom);
         var index = 0;
         foreach (var reference in answers.References) card.Children.Add(ReferenceSenseRow(reference, index++));
         foreach (var sense in answers.Senses) card.Children.Add(SenseRow(sense, index++));

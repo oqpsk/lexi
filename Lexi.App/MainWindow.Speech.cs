@@ -6,27 +6,29 @@ namespace Lexi;
 public partial class MainWindow
 {
     private readonly SpeechPlayback speech = new(App.UserRoot);
-    private bool speaking;
     private int speechRequest;
     private string speechText = "";
     private void StopSpeech()
     {
-        speechRequest++; speech.Stop(); speaking = false;
+        speechRequest++; speech.Stop(); speakingKey = null;
         SpeechButton.Content = Theme.Icon("SpeakerIcon"); SpeechButton.ToolTip = "播放合成发音";
+        ShowReadAloud();
     }
     private async void Speech_Click(object sender, RoutedEventArgs e)
     {
-        if (speaking) { StopSpeech(); LookupStatus.Text = "发音已停止"; return; }
-        await SpeakAsync(speechText);
+        if (speakingKey == HeadingSpeech) { StopSpeech(); LookupStatus.Text = "发音已停止"; return; }
+        await SpeakAsync(speechText, HeadingSpeech);
     }
-    private async Task SpeakAsync(string text)
+    // key is the headword or the definition or example being read; only its controls show playback.
+    private async Task SpeakAsync(string text, string key)
     {
-        StopSpeech(); var request = speechRequest; speaking = true;
-        SpeechButton.Content = Theme.Icon("StopIcon");
+        StopSpeech(); var request = speechRequest; speakingKey = key;
+        if (key == HeadingSpeech) SpeechButton.Content = Theme.Icon("StopIcon");
+        ShowReadAloud();
         try
         {
             await speech.PlayAsync(text, SpeechOptions.From(settings), settings.Online, message =>
-            { if (request == speechRequest) { SpeechButton.ToolTip = message + " · 点击停止"; LookupStatus.Text = message; } });
+            { if (request == speechRequest) { if (key == HeadingSpeech) SpeechButton.ToolTip = message + " · 点击停止"; LookupStatus.Text = message; } });
             if (request == speechRequest) LookupStatus.Text = "发音播放结束";
         }
         catch (OperationCanceledException) { }

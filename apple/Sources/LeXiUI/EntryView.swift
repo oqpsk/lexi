@@ -57,11 +57,12 @@ struct HeadingRow: View {
             }
             HStack(spacing: 8) {
                 if !view.speechText.isEmpty {
+                    let playing = speech.speakingID == "heading"
                     Button { speech.toggle(view.speechText, using: store) } label: {
-                        Image(systemName: speech.speaking ? "stop.fill" : "speaker.wave.2.fill")
+                        Image(systemName: playing ? "stop.fill" : "speaker.wave.2.fill")
                     }
-                    .help(speech.speaking ? "停止播放" : "播放合成发音")
-                    .accessibilityLabel(speech.speaking ? "停止合成发音" : "播放合成发音")
+                    .help(playing ? "停止播放" : "播放合成发音")
+                    .accessibilityLabel(playing ? "停止合成发音" : "播放合成发音")
                 }
                 if !view.etymology.isEmpty {
                     Button { showEtymology.toggle() } label: {

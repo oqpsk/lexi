@@ -6,7 +6,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
     <NuGetAudit>false</NuGetAudit>
-    <Version>0.9.16</Version>
+    <Version>0.9.18</Version>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
 </Project>

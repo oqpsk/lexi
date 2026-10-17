@@ -39,6 +39,7 @@ LeXi 的 Windows 版（`Lexi.App`，WPF）与 macOS 版（`apple/`，SwiftUI）�
 | 本地发音 | `SpeechCatalog.Local`（本机声线模型与校验） | 已实现：Windows SAPI 声线，可选“按文字语言自动选择”；生成 WAV 后按同一规则缓存 | 已实现：系统声线（`AVSpeechSynthesizer`），可选“按文字语言自动选择”；直接朗读，不生成缓存文件 |
 | 在线发音：OpenAI、Grok、ElevenLabs | `SpeechCatalog`（模型、声线、校验与提示）、`SpeechClient`、`ElevenLabsSpeech` | 已实现：设置 → 发音选择模型与声线，可试听 | 已实现：设置 → 发音选择模型与声线，可试听；通过 Host 的 `speech.*` 方法调用同一份 Core |
 | ElevenLabs 账号声线与 Voice ID | `SpeechClient.ElevenVoicesAsync`、`SpeechAudio.ElevenVoicesAsync`（离线时不读取） | 已实现：首次展开声线列表时读取，可刷新；“指定其他声线”填写 Voice ID | 已实现：点击“读取声线列表”读取，可刷新（SwiftUI 选择器没有展开时机）；“指定其他声线”填写 Voice ID |
+| 朗读释义与例句 | `SpeechAudio` 与 `SpeechCatalog.Validate`（同一份缓存与长度规则，每次最多 4096/5000 字） | 已实现：鼠标移到释义、英文释义、例句或其译文上，左侧边距浮现扬声器，播放中变为停止按钮；右键菜单首项“朗读”，有选中文字时为“朗读所选文字”；播放中的段落以淡金色底标出；英文例句斜体，中文译文正体；扬声器与正文首行的字形中心对齐，正文到按钮的悬停区域连续覆盖折叠内容缩进 | 已实现：悬停扬声器、逐段朗读与停止、朗读所选文字；右键菜单在系统的查询、翻译与拷贝之上加入“朗读”；VoiceOver 提供“朗读”操作 |
 | 发音缓存与离线规则 | `SpeechAudio`：按文字、服务、模型、声线分别保存，写完整后才保留；离线时只播放已缓存的在线发音 | 已实现：`MediaPlayer` 播放 | 已实现：`AVAudioPlayer` 播放 Host 返回的 MP3 |
 | 语音密钥 | `SpeechClient`（格式校验与错误提示）；Core 不保存密钥 | 已实现：Windows 当前用户加密；未保存时可用 `OPENAI_API_KEY` 等环境变量 | 已实现：存入当前用户的钥匙串，只供 LeXi 使用，每次请求随调用传给 Host，Host 不保存。临时签名的应用重新构建后需重新保存一次，或用固定签名身份构建（apple/README.md）。不读取环境变量：从访达打开的应用拿不到 shell 环境 |
 

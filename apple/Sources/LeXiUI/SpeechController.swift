@@ -8,6 +8,8 @@ import Observation
 @MainActor @Observable
 public final class SpeechController: NSObject {
     public private(set) var speaking = false
+    // What is being read: "heading" for the headword, otherwise a definition or example's key.
+    public private(set) var speakingID: String?
     // Generation, playback and error messages, worded as on Windows.
     public private(set) var status = ""
     @ObservationIgnored private let keys: any SpeechKeys
@@ -24,18 +26,20 @@ public final class SpeechController: NSObject {
         synthesizer.delegate = self
     }
 
-    // The result's speaker button: speaks with the saved choice, or stops.
-    public func toggle(_ text: String, using service: any SpeechService) {
-        if speaking { stop("发音已停止"); return }
-        play(text, service.speechSelection, using: service, finished: "发音播放结束")
+    // A speaker button: speaks with the saved choice, or stops when it is already reading this item.
+    public func toggle(_ text: String, id: String = "heading", using service: any SpeechService) {
+        if speaking && speakingID == id { stop("发音已停止"); return }
+        play(text, service.speechSelection, using: service, finished: "发音播放结束", id: id)
     }
 
     // key is one typed in settings but not saved yet; otherwise the Keychain's key is used,
     // and only when the audio still has to be generated.
-    public func play(_ text: String, _ selection: SpeechSelection, key: String? = nil, using service: any SpeechService, finished: String) {
+    public func play(_ text: String, _ selection: SpeechSelection, key: String? = nil, using service: any SpeechService,
+                     finished: String, id: String? = nil) {
         stop()
         let request = generation
         speaking = true
+        speakingID = id
         self.finished = finished
         work = Task { await run(text, selection, key, service, request) }
     }
@@ -47,6 +51,7 @@ public final class SpeechController: NSObject {
         if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
         player?.stop(); player = nil
         speaking = false
+        speakingID = nil
         status = message
     }
 
@@ -91,6 +96,7 @@ public final class SpeechController: NSObject {
     private func end(_ message: String) {
         utterance = nil; player = nil
         speaking = false
+        speakingID = nil
         status = message
     }
 

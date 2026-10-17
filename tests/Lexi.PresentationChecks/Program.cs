@@ -63,6 +63,7 @@ internal static partial class Program
         Console.WriteLine("PASS: WPF resources, window content and control templates construct and measure without displaying windows.");
         CheckChrome(app, main, settings, panel);
         CheckParallelResults(main, settings);
+        CheckReadAloud(main);
         CheckDensity(main);
         CheckQueryProgress(app, main);
         CheckSpeechPresentation(main, settings);

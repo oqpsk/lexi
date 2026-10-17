@@ -34,7 +34,8 @@ struct AnswersCard: View {
                 Label(answers.mergeWarning, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange).padding(.top, 8)
             }
         }
-        .padding(18)
+        // A wider leading margin holds the read-aloud speakers.
+        .padding(.vertical, 18).padding(.trailing, 18).padding(.leading, 28)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentGroup()
     }
@@ -74,8 +75,8 @@ struct SenseContent: View {
             if !sense.expansion.isEmpty {
                 Text(sense.expansion).font(LexiTheme.lexical(15)).foregroundStyle(.secondary).help("英文全称").textSelection(.enabled)
             }
-            Text(sense.chinese).font(.system(size: 17)).lineSpacing(3).textSelection(.enabled)
-            Text(sense.english).font(.system(size: 15)).lineSpacing(2).foregroundStyle(.secondary).textSelection(.enabled)
+            Speakable(id: sense.key + ":chinese", text: sense.chinese, look: .system(17, lineSpacing: 3), service: store)
+            Speakable(id: sense.key + ":english", text: sense.english, look: .system(15, color: .secondaryLabelColor, lineSpacing: 2), service: store)
             DisclosureBar(sense: sense, store: store)
         }
     }
@@ -103,8 +104,8 @@ struct DisclosureBar: View {
             .padding(.top, 2)
             if hasExamples && store.isOpen(examplesKey) {
                 DetailBody {
-                    if !sense.example.isEmpty { Text(sense.example).font(LexiTheme.lexical(15)).italic().textSelection(.enabled) }
-                    if !sense.exampleChinese.isEmpty { Text(sense.exampleChinese).font(LexiTheme.chineseExample(15)).italic().textSelection(.enabled) }
+                    if !sense.example.isEmpty { Speakable(id: sense.key + ":example", text: sense.example, look: .lexical(15, italic: true), service: store) }
+                    if !sense.exampleChinese.isEmpty { Speakable(id: sense.key + ":exampleChinese", text: sense.exampleChinese, look: .chineseExample(15), service: store) }
                 }
             }
             if sourcesOpen {
@@ -147,8 +148,8 @@ struct ReferenceRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(reference.caption).font(.callout).foregroundStyle(.secondary)
             if !reference.expansion.isEmpty { Text(reference.expansion).font(LexiTheme.lexical(15)).foregroundStyle(.secondary) }
-            Text(reference.chinese).font(.system(size: 17)).textSelection(.enabled)
-            Text(reference.english).font(.system(size: 15)).foregroundStyle(.secondary).textSelection(.enabled)
+            Speakable(id: reference.key + ":chinese", text: reference.chinese, look: .system(17), service: store)
+            Speakable(id: reference.key + ":english", text: reference.english, look: .system(15, color: .secondaryLabelColor), service: store)
             Disclosure(label: "参考资料", key: reference.key, store: store) {
                 Text(reference.sourceNote).font(.callout).foregroundStyle(.secondary)
                 SourceLink(reference.sourceName, url: reference.sourceUrl)
@@ -196,8 +197,10 @@ private struct LeadingIcon: LabelStyle {
 
 struct DetailBody<Content: View>: View {
     @ViewBuilder let content: Content
+    @Environment(\.speechGutter) private var gutter
     var body: some View {
         VStack(alignment: .leading, spacing: 4) { content }
+            .environment(\.speechGutter, gutter + 12)
             .padding(.leading, 12)
             .overlay(alignment: .leading) { Capsule().fill(.quaternary).frame(width: 3) }
             .padding(.vertical, 2)

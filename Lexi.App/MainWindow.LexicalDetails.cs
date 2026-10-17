@@ -64,7 +64,8 @@ public partial class MainWindow
         var content = new StackPanel();
         content.Children.Add(CompactHint(brief.Caption));
         if (brief.Expansion.Length > 0) { var expansion = CompactText(brief.Expansion, 17); expansion.Foreground = accentBrush; content.Children.Add(expansion); }
-        content.Children.Add(CompactText(brief.Chinese, 20)); content.Children.Add(CompactText(brief.English, 18));
+        content.Children.Add(Speakable(CompactText(brief.Chinese, 20), brief.Key + ":chinese"));
+        content.Children.Add(Speakable(CompactText(brief.English, 18), brief.Key + ":english"));
         var controls = new WrapPanel(); var details = new StackPanel(); var source = new StackPanel();
         source.Children.Add(CompactHint(brief.SourceNote));
         var link = new Button { Content = brief.SourceName + " ↗", FontSize = 14, Foreground = muted, HorizontalAlignment = HorizontalAlignment.Left };
