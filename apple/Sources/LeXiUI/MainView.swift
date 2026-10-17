@@ -9,8 +9,8 @@ public struct LexiActions {
 }
 extension FocusedValues { @Entry public var lexiActions: LexiActions? }
 
-// The query window. Liquid Glass is limited to the floating control layer (toolbar, search
-// bar, footer controls and popovers); results sit on the normal window background.
+// The query window: a pane of Liquid Glass over the desktop, with the toolbar, search bar and
+// footer controls as glass on top of it and the results on grouped surfaces in between.
 public struct MainView: View {
     @Bindable var store: LexiStore
     @State private var speech = SpeechController()
@@ -47,7 +47,7 @@ public struct MainView: View {
                 .padding(.horizontal, 20).padding(.top, 2).padding(.bottom, 10)
         }
         .safeAreaBar(edge: .bottom) { bottomBar }
-        .containerBackground(LexiTheme.windowBackground, for: .window)
+        .glassWindow()
         .toolbar { toolbar }
         .navigationTitle("LeXi")
         .frame(minWidth: 540, minHeight: 420)

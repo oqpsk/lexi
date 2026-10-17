@@ -20,7 +20,7 @@ LeXi 的 Windows 版（`Lexi.App`，WPF）与 macOS 版（`apple/`，SwiftUI）�
 | TL;DR 概览 | `QueryPresentation`（`QuickReadView`） | 已实现：粉色 TL;DR 徽标与状态 | 已实现：粉底深色 TL;DR 标记与状态 |
 | 音标及来源、AI 音标标记 | `QueryPresentation`（`SavedPronunciation`） | 已实现 | 已实现 |
 | 词形变化 | `QueryPresentation`（`WordFormRow`） | 已实现：右键复制词形 | 已实现：右键菜单复制词形 |
-| 词源 | `EtymologyView` | 已实现：词条旁按钮弹出 | 已实现：词条旁按钮弹出 |
+| 词源 | `EtymologyView` | 已实现：词条旁罗塞塔石碑按钮弹出 | 已实现：词条旁罗塞塔石碑按钮弹出（与 Windows 同一图形） |
 | 专业参考摘要 | `SpecialistReferences`、`ReferenceView` | 已实现 | 已实现 |
 | 查询阶段、结束状态与状态文字 | `QueryProgressState`、`QueryProgressTracker`、`QueryView.Status` | 已实现：输入框旁状态环，悬浮查看阶段；单行底栏 | 已实现：输入框旁状态指示，点击查看阶段；底栏状态 |
 | 保存的结果与重新生成 | `SavedQueries`、`QuerySession.RegenerateAsync` | 已实现：底栏“重新生成” | 已实现：底栏“重新生成”，⌘R |
@@ -52,7 +52,7 @@ LeXi 的 Windows 版（`Lexi.App`，WPF）与 macOS 版（`apple/`，SwiftUI）�
 | 查询历史入口 | 底栏 ξ 标志 | 工具栏“查询历史”按钮、⌘Y |
 | 关闭与后台 | 托盘图标；关闭按钮可在“设置 → 窗口”中设为最小化或退出 | 关闭窗口不退出，点击 Dock 图标重新打开；不提供关闭行为设置 |
 | 单实例 | 互斥量与命名管道激活已有窗口 | macOS 应用默认单实例，单一查询窗口 |
-| 设计语言 | Windows 11 Acrylic 深色浮窗，粉色点缀 | Apple 设计语言：Liquid Glass 查询胶囊、工具栏与底部控件，结果在其下滚动；中性窗口背景，不随墙纸着色；系统颜色与强调色，跟随深浅色；粉色只用于 TL;DR |
+| 设计语言 | Windows 11 Acrylic 深色浮窗，粉色点缀 | Apple 设计语言：Liquid Glass 查询胶囊、工具栏与底部控件，结果在其下滚动；窗口本身是一整块 Liquid Glass（如控制中心），透出桌面并随深浅色变为浅色或深色玻璃，开启“减少透明度”时更不透明；系统颜色与强调色，跟随深浅色；粉色只用于 TL;DR，词性用与 Windows 相同的淡金色（浅色下加深） |
 | 快捷键 | Ctrl+L、Ctrl+,、Ctrl+Q；Esc 收起建议或最小化 | ⌘L、⌘R、⌘[、⌘]、⌘Y、⌘,、⌘Q；Esc 收起建议 |
 | 查询逻辑接入 | 直接引用 `Lexi.Core` | 内置 `Lexi.Host`（JSON lines） |
 | 构建与分发 | `scripts/Build.ps1`，可生成自包含版本 | `apple/scripts/build-app.sh`，按构建机器架构生成本机签名的应用；Developer ID 签名与公证计划中 |

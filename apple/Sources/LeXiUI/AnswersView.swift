@@ -55,7 +55,8 @@ struct SenseHeadingText: View {
     let heading: SenseHeading
     var body: some View {
         var text = Text(heading.prefix + "  ").monospacedDigit().foregroundStyle(.tertiary)
-        text = Text("\(text)\(Text(heading.partOfSpeech).font(LexiTheme.lexical(16)).italic().foregroundStyle(.secondary))")
+        // The part of speech stands out in pale gold, as on Windows.
+        text = Text("\(text)\(Text(heading.partOfSpeech).font(LexiTheme.lexical(16)).italic().foregroundStyle(LexiTheme.gold))")
         if !heading.form.isEmpty { text = Text("\(text)\(Text("  " + heading.form).font(LexiTheme.lexical(14)).italic())") }
         if !heading.usage.isEmpty { text = Text("\(text)\(Text("  " + heading.usage))") }
         if heading.abbreviation { text = Text("\(text)\(Text("  缩写"))") }

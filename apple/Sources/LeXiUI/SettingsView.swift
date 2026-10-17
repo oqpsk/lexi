@@ -18,12 +18,9 @@ public struct SettingsView: View {
             Tab("发音", systemImage: "speaker.wave.2") { SpeechSettings(store: store) }
         }
         .frame(width: 600, height: 560)
-        // Neutral like the query window: the forms keep their grouped rows on the same untinted base.
+        // A glass pane like the query window; the grouped rows and the tab bar sit directly on it.
         .scrollContentBackground(.hidden)
-        .containerBackground(LexiTheme.windowBackground, for: .window)
-        // The tab bar is the window toolbar, which macOS would otherwise tint with the wallpaper.
-        .toolbarBackground(LexiTheme.windowBackground, for: .windowToolbar)
-        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
+        .glassWindow()
         .task { await store.refreshSettings() }
     }
 }
@@ -38,6 +35,7 @@ struct SettingLabel: View {
             Text(title)
             Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
+        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
     }
 }
 
