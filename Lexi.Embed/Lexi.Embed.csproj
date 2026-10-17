@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Lexi.Host's protocol server as a native library, for apps that cannot start a process (iOS).
+       dotnet publish Lexi.Embed -c Release -r iossimulator-arm64 (or ios-arm64); see apple/scripts/build-ios.sh. -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>LexiEmbed</AssemblyName>
+    <RootNamespace>Lexi.Embed</RootNamespace>
+    <Product>LeXi Embedded Host</Product>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Core's JSON is source-generated (JsonContext.cs); the analyzers cannot see that its options carry the generated resolver. -->
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <NoWarn>$(NoWarn);IL2026;IL3050;IL2104;IL3053</NoWarn>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <!-- Only a publish for a runtime compiles natively, so plain builds restore offline like the rest of the
+       repository. iOS targets use the NativeAOT runtime pack from NuGet; no .NET iOS workload is needed. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishAot>true</PublishAot>
+    <PublishAotUsingRuntimePack>true</PublishAotUsingRuntimePack>
+    <NativeLib>Shared</NativeLib>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Lexi.Core/Lexi.Core.csproj" />
+    <Compile Include="../Lexi.Host/HostServer.cs" Link="HostServer.cs" />
+    <Compile Include="../Lexi.Host/HostJson.cs" Link="HostJson.cs" />
+    <Content Include="../Lexi.Core/dictionary.schema.json" Link="assets/dictionary.schema.json" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../Lexi.Core/translation.schema.json" Link="assets/translation.schema.json" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../Lexi.Core/dictionary.instructions.txt" Link="assets/dictionary.instructions.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../Lexi.Core/sense-merge.schema.json" Link="assets/sense-merge.schema.json" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../Lexi.Core/sense-merge.instructions.txt" Link="assets/sense-merge.instructions.txt" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

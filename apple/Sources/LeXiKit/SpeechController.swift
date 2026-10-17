@@ -1,5 +1,4 @@
 import AVFoundation
-import LeXiKit
 import Observation
 
 // Speech starts only on an explicit click and never changes provider. Lexi.Core checks the text

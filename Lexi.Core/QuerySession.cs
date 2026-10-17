@@ -16,6 +16,7 @@ public sealed class QuerySession : IDisposable
     private readonly Pronunciation pronunciations;
     private readonly CodexDictionary codex;
     private readonly ClaudeDictionary claude, secondaryClaude;
+    private readonly ApiDictionary api;
     private readonly QueryProviders providers;
     private readonly bool warmClients;
     private readonly QueryProgressTracker progress = new();
@@ -38,11 +39,22 @@ public sealed class QuerySession : IDisposable
         codex = new(paths.AssetRoot, paths.UserRoot);
         claude = new(paths.AssetRoot, paths.UserRoot); secondaryClaude = new(paths.AssetRoot, paths.UserRoot);
         warmClients = providers == null;
-        this.providers = providers ?? new((model, query, evidence, options, token, preview) => model.Provider == "claude"
-                ? (model == LookupModel.Primary(Settings) ? claude : secondaryClaude).LookupAsync(query, evidence, model.Model, token, preview)
-                : codex.LookupAsync(query, evidence, options, token), codex.JudgeSensesAsync,
-            (text, target, options, token, preview) => options.Provider == "claude"
-                ? claude.TranslateAsync(text, target, options.Model, token, preview) : codex.TranslateAsync(text, target, options, token));
+        api = new(paths.AssetRoot, network);
+        // Each model goes to its own service: the Codex or Claude Code subscription, or an API with the user's key.
+        this.providers = providers ?? new((model, query, evidence, options, token, preview) => model.Provider switch
+            {
+                "claude" => (model == LookupModel.Primary(Settings) ? claude : secondaryClaude).LookupAsync(query, evidence, model.Model, token, preview),
+                "openai" or "anthropic" => api.LookupAsync(model, query, evidence, Keys.For(model.Provider), token),
+                _ => codex.LookupAsync(query, evidence, options, token)
+            },
+            (request, options, token) => ModelCatalog.IsApi(options.Provider)
+                ? api.JudgeSensesAsync(LookupModel.Primary(options), request, Keys.For(options.Provider), token) : codex.JudgeSensesAsync(request, options, token),
+            (text, target, options, token, preview) => options.Provider switch
+            {
+                "claude" => claude.TranslateAsync(text, target, options.Model, token, preview),
+                "openai" or "anthropic" => api.TranslateAsync(LookupModel.Primary(options), text, target, Keys.For(options.Provider), token),
+                _ => codex.TranslateAsync(text, target, options, token)
+            });
         this.clock = clock ?? TimeProvider.System;
         View = Build();
     }
@@ -50,6 +62,8 @@ public sealed class QuerySession : IDisposable
     public LexiPaths Paths { get; }
     public AppSettings Settings { get; }
     public Cache Cache { get; }
+    // API keys for this session only, from the front end's secure storage; never saved by Core.
+    public ApiKeys Keys { get; } = new();
     public SavedQueries Saved => new(Cache);
     public QueryHistory History { get; }
     public QueryNavigation Navigation { get; } = new();
@@ -60,7 +74,7 @@ public sealed class QuerySession : IDisposable
     // Raised in order for every published view; front ends marshal to their UI thread if needed.
     public event Action<QueryView>? Changed;
 
-    private string ProviderName => Settings.Provider == "claude" ? "Claude" : "Codex";
+    private string ProviderName => Settings.Provider switch { "claude" or "anthropic" => "Claude", "openai" => "OpenAI", _ => "Codex" };
 
     public async Task InitializeAsync()
     {

@@ -31,7 +31,7 @@ else if (args[0] == "build-data")
     var forms = new Dictionary<string, string>(StringComparer.Ordinal);
     foreach (var (key, entry) in entries.OrderBy(x => x.Key, StringComparer.Ordinal))
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(entry, Json.Options);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(entry, Json.Flexible);
         index.Write(key); index.Write(data.Position); index.Write(bytes.Length); index.Write(entry.Frequency); data.Write(bytes);
         foreach (var item in entry.Exchange.Split('/'))
         {
@@ -67,12 +67,12 @@ else if (args[0] == "check")
     var online = OnlineDictionary.Parse("mog", fixture)!;
     Check(online.Senses.Length == 1 && online.Senses[0].Definition == "To & outclass.", "online language filtering and HTML safety");
     var ai = new AiEntry("mog", true, [new("verb", "Outclass", "胜过", "slang", "", "", [1])], "", "source_based");
-    Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai, Json.Options), "mog", online).EvidenceStatus == "source_based", "valid numbered provenance");
+    Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai, Json.Flexible), "mog", online).EvidenceStatus == "source_based", "valid numbered provenance");
     var ungrounded = ai with { Senses = [ai.Senses[0] with { Evidence = [] }] };
-    Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ungrounded, Json.Options), "mog", online).EvidenceStatus == "unverified", "ungrounded AI cannot be labeled source-based");
-    try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai, Json.Options), "hello", online); Check(false, "wrong query rejected"); }
+    Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ungrounded, Json.Flexible), "mog", online).EvidenceStatus == "unverified", "ungrounded AI cannot be labeled source-based");
+    try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai, Json.Flexible), "hello", online); Check(false, "wrong query rejected"); }
     catch (InvalidDataException) { Check(true, "wrong query rejected"); }
-    try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai with { Senses = [ai.Senses[0] with { Evidence = [99] }] }, Json.Options), "mog", online); Check(false, "bad citations rejected"); }
+    try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(ai with { Senses = [ai.Senses[0] with { Evidence = [99] }] }, Json.Flexible), "mog", online); Check(false, "bad citations rejected"); }
     catch (InvalidDataException) { Check(true, "bad citations rejected"); }
     sw.Restart(); for (int i = 0; i < 1000; i++) dict.Lookup("serendipity");
     Console.WriteLine($"1000 offline queries: {sw.ElapsedMilliseconds} ms; {count} checks passed");
@@ -82,7 +82,7 @@ else if (args[0] == "stream-check")
     int count = 0;
     void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); Console.WriteLine("PASS: " + name); count++; }
     var original = new AiEntry("mog", true, [new("verb", "outshine \"someone\" {figuratively}", "胜过；压过风头", "slang", "He mogs.", "他更出众。", [1])], "", "source_based");
-    var json = JsonSerializer.Serialize(original, Json.Options);
+    var json = JsonSerializer.Serialize(original, Json.Flexible);
     var preview = StreamingEntry.Read(json, "mog");
     Check(preview?.Senses[0].Chinese == original.Senses[0].Chinese && preview.Senses[0].English == original.Senses[0].English, "escaped strings and Unicode survive streaming");
     Check(preview?.EvidenceStatus == "unverified" && preview.Senses.All(s => s.Evidence.Length == 0), "unfinished result never claims verified citations");
@@ -118,10 +118,10 @@ else if (args[0] == "bench-claude")
         var onlineMs = sw.ElapsedMilliseconds;
         var ai = await claude.LookupAsync(query, online, "haiku", CancellationToken.None, new CallbackProgress<AiEntry>(_ => first ??= sw.ElapsedMilliseconds));
         var row = new { query, onlineMs, firstDefinitionMs = first, totalMs = sw.ElapsedMilliseconds, entry = ai };
-        rows.Add(row); Console.WriteLine(JsonSerializer.Serialize(row,Json.Options));
+        rows.Add(row); Console.WriteLine(JsonSerializer.Serialize(row,Json.Flexible));
     }
     Directory.CreateDirectory(args[2]);
-    File.WriteAllText(Path.Combine(args[2], "benchmark.json"), JsonSerializer.Serialize(rows, new JsonSerializerOptions(Json.Options) { WriteIndented = true }));
+    File.WriteAllText(Path.Combine(args[2], "benchmark.json"), JsonSerializer.Serialize(rows, new JsonSerializerOptions(Json.Flexible) { WriteIndented = true }));
 }
 else if (args[0] == "live")
 {
@@ -136,24 +136,25 @@ else if (args[0] == "live")
     var settings = new AppSettings { Model = args.Length > 5 ? args[5] : "" };
     var ai = await new CodexDictionary(args[2], args[3]).LookupAsync(query, entry, settings, CancellationToken.None);
     await cache.WriteAsync("ai", query, new AiEnvelope(ai, CodexDictionary.EvidenceHash(entry), DateTimeOffset.UtcNow, settings.Model, settings.ReasoningEffort));
-    Console.WriteLine(JsonSerializer.Serialize(ai, new JsonSerializerOptions(Json.Options) { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+    Console.WriteLine(JsonSerializer.Serialize(ai, new JsonSerializerOptions(Json.Flexible) { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
     Console.WriteLine($"Total: {sw.ElapsedMilliseconds} ms");
 }
 
 else if (args[0] == "extended-check") ExtendedChecks.Run(args[1]);
 else if (args[0] == "platform-check") PlatformChecks.Run(args[1]);
 else if (args[0] == "session-check") await SessionChecks.Run(args[1], args[2]);
+else if (args[0] == "api-check") await ApiChecks.Run(args[1], args[2]);
 else if (args[0] == "host-check") await HostChecks.Run(args[1], args[2], args[3], args.ElementAtOrDefault(4));
 else if (args[0] == "parallel-check") await ParallelChecks.Run(args[1]);
 else if (args[0] == "parallel-live") await ParallelLive.Run(args[1], args[2], args[3], args.Skip(4));
 else if (args[0] == "inspect-library")
 {
     using var library = new OfflineLibrary(args[1]);
-    Console.WriteLine(JsonSerializer.Serialize(library.Dictionaries.Select(d => new { d.Id, d.EntryCount, d.Status }), Json.Options));
+    Console.WriteLine(JsonSerializer.Serialize(library.Dictionaries.Select(d => new { d.Id, d.EntryCount, d.Status }), Json.Flexible));
     foreach (var query in args.Skip(2))
     {
         var hits = library.Lookup(query, new AppSettings());
-        Console.WriteLine(JsonSerializer.Serialize(new { query, hits = hits.Select(h => new { h.Dictionary.Id, h.Entry.Word, English = h.Entry.English[..Math.Min(h.Entry.English.Length, 900)], Chinese = h.Entry.Chinese[..Math.Min(h.Entry.Chinese.Length, 900)] }) }, new JsonSerializerOptions(Json.Options) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+        Console.WriteLine(JsonSerializer.Serialize(new { query, hits = hits.Select(h => new { h.Dictionary.Id, h.Entry.Word, English = h.Entry.English[..Math.Min(h.Entry.English.Length, 900)], Chinese = h.Entry.Chinese[..Math.Min(h.Entry.Chinese.Length, 900)] }) }, new JsonSerializerOptions(Json.Flexible) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
     }
 }
 else if (args[0] == "live-enhancements")
@@ -161,7 +162,7 @@ else if (args[0] == "live-enhancements")
     using var library = new OfflineLibrary(args[1]);
     using var web = new OnlineDictionary();
     using var provider = new ClaudeDictionary(args[2], args[3]);
-    var outputOptions = new JsonSerializerOptions(Json.Options) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    var outputOptions = new JsonSerializerOptions(Json.Flexible) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
     var settings = new AppSettings { Provider = "claude", Model = "haiku" };
     foreach (var query in new[] { "车钟", "春秋笔法", "mog" })
     {
@@ -190,7 +191,7 @@ else if (args[0] == "live-enhancements")
 }
 else if (args[0] == "import-corpus")
 {
-    var metadata = JsonSerializer.Deserialize<DictionaryMetadata>(File.ReadAllText(args[4]), Json.Options) ?? throw new InvalidDataException("Missing metadata");
+    var metadata = JsonSerializer.Deserialize<DictionaryMetadata>(File.ReadAllText(args[4]), Json.Flexible) ?? throw new InvalidDataException("Missing metadata");
     CorpusBuilder.Build(args[1], args[2], args[3], metadata);
 }
 else throw new ArgumentException("Unknown command: " + args[0]);

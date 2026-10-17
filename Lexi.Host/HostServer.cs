@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading.Channels;
 using Lexi.Core;
 
@@ -23,10 +24,14 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
     public static string Version => typeof(HostServer).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
     public static readonly JsonSerializerOptions Options = new(Json.Options)
     {
-        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+        TypeInfoResolver = JsonTypeInfoResolver.Combine(HostJson.Default, Json.Resolver),
+        // One converter per enum: the generic form needs no code generated at run time.
+        Converters = { Camel<QueryViewKind>(), Camel<OriginalsMode>(), Camel<ModelPhase>(), Camel<QueryStage>(), Camel<QueryOutcome>(),
+            Camel<MergeFailureKind>(), Camel<ModelAccessFailure>() },
         // Chinese text stays readable; JSON still escapes every control character, so one message is one line.
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private static JsonConverter Camel<T>() where T : struct, Enum => new JsonStringEnumConverter<T>(JsonNamingPolicy.CamelCase);
     private static readonly JsonElement NoParameters = JsonDocument.Parse("{}").RootElement.Clone();
     private readonly Channel<string> outgoing = Channel.CreateUnbounded<string>(new() { SingleReader = true });
     private readonly ConcurrentDictionary<string, CancellationTokenSource> running = new();
@@ -34,7 +39,7 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
 
     public async Task RunAsync(CancellationToken token = default)
     {
-        void Publish(QueryView view) => Send(new { @event = "view", data = view });
+        void Publish(QueryView view) => Send(new ViewEvent("view", view));
         session.Changed += Publish;
         var writer = Task.Run(WriteAsync, CancellationToken.None);
         var handlers = new List<Task>();
@@ -60,7 +65,7 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
             await Task.WhenAll(handlers);
             session.Changed -= Publish;
             speech.Dispose();
-            if (shutdown != null) Reply(shutdown, new { });
+            if (shutdown != null) Reply(shutdown, new EmptyResult());
             outgoing.Writer.TryComplete();
             await writer;
         }
@@ -108,13 +113,9 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
         {
             case "initialize":
                 await session.InitializeAsync();
-                return new
-                {
-                    protocol = Protocol, version = Version,
-                    platform = OperatingSystem.IsMacOS() ? "macos" : OperatingSystem.IsWindows() ? "windows" : "linux",
-                    paths = new { data = session.Paths.DataRoot, user = session.Paths.UserRoot, assets = session.Paths.AssetRoot },
-                    view = session.View, settings = Settings()
-                };
+                return new InitializeResult(Protocol, Version,
+                    OperatingSystem.IsIOS() ? "ios" : OperatingSystem.IsMacOS() ? "macos" : OperatingSystem.IsWindows() ? "windows" : "linux",
+                    new HostPaths(session.Paths.DataRoot, session.Paths.UserRoot, session.Paths.AssetRoot), session.View, Settings());
             case "query.submit":
             {
                 using var stop = token.Register(session.Cancel);
@@ -133,18 +134,18 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
                 if (direction is not (-1 or 1)) throw new HostException("invalid_params", "direction must be -1 or 1.");
                 using var stop = token.Register(session.Cancel);
                 var page = await session.NavigateAsync((int)direction, Number(p, "scroll"));
-                return new { page, view = Position() };
+                return new NavigateResult(page, Position());
             }
             case "query.home": session.ShowHome(true, Number(p, "scroll")); return Position();
             case "query.cancel": session.Cancel(); return Position();
             case "query.view": return session.View;
-            case "suggest": return new { suggestions = session.Suggest(Text(p, "text")) };
+            case "suggest": return new SuggestResult(session.Suggest(Text(p, "text")));
             case "history.list": return History();
             case "history.remove":
             {
                 var query = Text(p, "query"); var translation = Flag(p, "translation");
                 var entry = session.History.Entries.FirstOrDefault(e => e.Query == query && e.Translation == translation);
-                return new { removed = entry != null && session.RemoveHistory(entry), history = History() };
+                return new RemoveHistoryResult(entry != null && session.RemoveHistory(entry), History());
             }
             case "settings.get": return Settings();
             case "settings.update": return UpdateSettings(p);
@@ -156,8 +157,8 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
             case "dictionaries.list":
             {
                 var library = session.Library;
-                return new { dictionaries = library.IsCompletedSuccessfully ? library.Result.Dictionaries : DictionaryCatalog.InspectAll(session.Paths.DataRoot),
-                    folder = session.Paths.DataRoot };
+                return new DictionariesResult(library.IsCompletedSuccessfully ? library.Result.Dictionaries : DictionaryCatalog.InspectAll(session.Paths.DataRoot),
+                    session.Paths.DataRoot);
             }
             case "connection.status": return await ProviderConnection.CheckAsync(Provider(p), Text(p, "codexPath", session.Settings.CodexPath), token);
             case "connection.loginCommand":
@@ -165,26 +166,35 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
                 var provider = Provider(p);
                 // The front end opens this in a terminal on an explicit click; the official client owns sign-in.
                 if (ProviderConnection.Command(provider, Text(p, "codexPath", session.Settings.CodexPath), true) is not { } info) return null;
-                return new { fileName = info.FileName, arguments = info.ArgumentList.ToArray(),
-                    path = info.Environment.TryGetValue("PATH", out var path) ? path ?? "" : "",
-                    clearEnvironment = provider == "claude" ? ProviderConnection.ClaudeClearedVariables : [] };
+                return new LoginCommand(info.FileName, info.ArgumentList.ToArray(),
+                    info.Environment.TryGetValue("PATH", out var path) ? path ?? "" : "",
+                    provider == "claude" ? ProviderConnection.ClaudeClearedVariables : []);
             }
             case "speech.models":
-                return new { models = SpeechCatalog.Models.Select(m => new { m.Provider, m.Id, m.Name, local = SpeechCatalog.IsLocal(m.Provider) }) };
-            case "speech.voices": return new { voices = SpeechCatalog.Voices(Text(p, "provider"), Text(p, "model")) };
+                return new SpeechModelsResult(SpeechCatalog.Models.Select(m => new SpeechModelItem(m.Provider, m.Id, m.Name, SpeechCatalog.IsLocal(m.Provider))).ToArray());
+            case "speech.voices": return new VoicesResult(SpeechCatalog.Voices(Text(p, "provider"), Text(p, "model")));
             // Keys arrive with each call from the front end's secure storage. The host never keeps,
             // logs or returns them, and speech errors carry only Core's wording.
             case "speech.elevenVoices":
-                return new { voices = await Speech(() => speech.ElevenVoicesAsync(session.Settings.Online, Text(p, "key", ""), token)) };
+                return new VoicesResult(await Speech(() => speech.ElevenVoicesAsync(session.Settings.Online, Text(p, "key", ""), token)));
             case "speech.cached":
             {
                 var options = SpeechRequest(p);
-                return new { path = await Speech(() => Task.FromResult(speech.Cached(Text(p, "text"), options))), local = SpeechCatalog.IsLocal(options.Provider) };
+                return new CachedSpeechResult(await Speech(() => Task.FromResult(speech.Cached(Text(p, "text"), options))), SpeechCatalog.IsLocal(options.Provider));
             }
             case "speech.synthesize":
             {
                 var key = Text(p, "key", "");
-                return new { path = await Speech(() => speech.OnlineAsync(Text(p, "text"), SpeechRequest(p), session.Settings.Online, () => key, null, token)) };
+                return new SpeechFileResult(await Speech(() => speech.OnlineAsync(Text(p, "text"), SpeechRequest(p), session.Settings.Online, () => key, null, token)));
+            }
+            // Model API keys for platforms without the subscription clients. Held in memory for this
+            // session only; never saved, logged or returned.
+            case "keys.set":
+            {
+                var provider = Text(p, "provider");
+                if (!ApiKeys.Supports(provider)) throw new HostException("invalid_params", "provider must be openai or anthropic.");
+                session.Keys.Set(provider, Text(p, "key", ""));
+                return new EmptyResult();
             }
             case "cancel":
             {
@@ -192,30 +202,23 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
                     throw new HostException("invalid_params", "id must name a running request.");
                 var found = running.TryGetValue(target.GetRawText(), out var request);
                 request?.Cancel();
-                return new { cancelled = found };
+                return new CancelResult(found);
             }
             default: throw new HostException("method_not_found", $"Unknown method '{method}'.");
         }
     }
 
-    private object Position() { var view = session.View; return new { request = view.Request, revision = view.Revision }; }
+    private ViewPosition Position() { var view = session.View; return new(view.Request, view.Revision); }
 
-    private object History() => new
-    {
-        entries = session.History.Entries.Select(e => new { e.Query, e.Translation, e.QueriedAt, e.Preview, e.Kind }).ToArray(),
-        error = session.History.Error
-    };
+    private HistoryResult History() => new(
+        session.History.Entries.Select(e => new HistoryItem(e.Query, e.Translation, e.QueriedAt, e.Preview, e.Kind)).ToArray(), session.History.Error);
 
-    private object Settings()
+    private SettingsResult Settings()
     {
         var settings = session.Settings;
         var models = ModelCatalog.Choices(settings);
-        return new
-        {
-            settings, models, judgeModels = ModelCatalog.JudgeChoices(models),
-            controls = new { onlineLabel = ControlText.OnlineLabel(settings.Online), onlineTooltip = ControlText.OnlineTooltip(settings.Online),
-                regenerateTooltip = ControlText.RegenerateTooltip(settings.Online) }
-        };
+        return new(settings, models, ModelCatalog.JudgeChoices(models), new(ControlText.OnlineLabel(settings.Online),
+            ControlText.OnlineTooltip(settings.Online), ControlText.RegenerateTooltip(settings.Online)));
     }
 
     private static SpeechOptions SpeechRequest(JsonElement p) => new(Text(p, "provider"), Text(p, "model"), Text(p, "voice"));
@@ -248,8 +251,9 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
             catch (InvalidOperationException e) { throw new HostException("invalid_settings", e.Message); }
         }
         var previous = session.QuerySettingsIdentity();
-        foreach (var property in typeof(AppSettings).GetProperties().Where(x => x.CanRead && x.CanWrite))
-            property.SetValue(session.Settings, property.GetValue(candidate));
+        // Copies through the generated metadata: every saved setting, without run-time reflection.
+        foreach (var property in ((JsonTypeInfo<AppSettings>)Options.GetTypeInfo(typeof(AppSettings))).Properties)
+            if (property is { Get: { } get, Set: { } set }) set(session.Settings, get(candidate));
         ModelCatalog.ApplyFixedOptions(session.Settings);
         session.SettingsSaved(previous);
         return Settings();
@@ -268,8 +272,8 @@ public sealed class HostServer(QuerySession session, TextReader input, TextWrite
     private static double Number(JsonElement p, string name) =>
         p.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number && double.IsFinite(value.GetDouble()) ? value.GetDouble() : 0;
 
-    private void Reply(JsonElement? id, object? result) => Send(new { id, result });
-    private void Fail(JsonElement? id, string code, string message) => Send(new { id, error = new { code, message } });
+    private void Reply(JsonElement? id, object? result) => Send(new HostReply(id, result));
+    private void Fail(JsonElement? id, string code, string message) => Send(new HostFailure(id, new HostError(code, message)));
     private void Send(object message) => outgoing.Writer.TryWrite(JsonSerializer.Serialize(message, Options));
 
     private async Task WriteAsync()

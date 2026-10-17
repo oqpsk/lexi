@@ -32,9 +32,9 @@ internal static class SpeechChecks
             Content = new StringContent("{\"parse\":{\"text\":{},\"wikitext\":null}}") }))))
             Check(await invalidMetadata.LookupAsync("word", CancellationToken.None) == null, "unsupported metadata shapes do not crash or replace existing forms");
         var original = new AiEntry("word", true, [new("noun", "a definition", "释义", "", "example", "例句", [])], "", "unverified", "/wɜːd/");
-        var json = JsonSerializer.Serialize(original, Json.Options);
+        var json = JsonSerializer.Serialize(original, Json.Flexible);
         Check(CodexDictionary.ParseAndValidate(json, "word", null).Phonetic == "/wɜːd/" && StreamingEntry.Read(json, "word")?.Phonetic == "/wɜːd/", "model IPA survives complete and streaming output");
-        var old = JsonSerializer.Serialize(new { original.Word, original.Found, original.Senses, original.Note, original.EvidenceStatus }, Json.Options);
+        var old = JsonSerializer.Serialize(new { original.Word, original.Found, original.Senses, original.Note, original.EvidenceStatus }, Json.Flexible);
         Check(CodexDictionary.ParseAndValidate(old, "word", null) is { Found: true, Phonetic: "" }, "existing definitions remain readable without an IPA field");
 
         var openai = new SpeechOptions("openai", "gpt-4o-mini-tts", "coral");

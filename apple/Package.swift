@@ -6,8 +6,12 @@ import PackageDescription
 let package = Package(
     name: "LeXi",
     defaultLocalization: "zh-Hans",
-    platforms: [.macOS(.v26)],
-    products: [.executable(name: "LeXi", targets: ["LeXi"])],
+    platforms: [.macOS(.v26), .iOS(.v26)],
+    products: [
+        .executable(name: "LeXi", targets: ["LeXi"]),
+        // Protocol models, the host client and speech, shared with the iOS app (apple/iOS).
+        .library(name: "LeXiKit", targets: ["LeXiKit"]),
+    ],
     targets: [
         .target(name: "LeXiKit"),
         .target(name: "LeXiUI", dependencies: ["LeXiKit"]),

@@ -28,8 +28,14 @@ public final class LexiStore {
 
     public init() {}
 
+#if os(macOS)
     public func start(executable: URL, arguments: [String]) async {
-        let client = HostClient(executable: executable, arguments: arguments) { [weak self] event in
+        await start(transport: ProcessTransport(executable: executable, arguments: arguments))
+    }
+#endif
+
+    public func start(transport: any HostTransport) async {
+        let client = HostClient(transport: transport) { [weak self] event in
             Task { @MainActor in self?.handle(event) }
         }
         self.client = client
@@ -49,6 +55,13 @@ public final class LexiStore {
     }
 
     public func stop() async { await client?.stop() }
+
+    // Model API keys for platforms without the subscription clients (iOS), from the Keychain.
+    // The host keeps them in memory only (keys.set); an empty key removes it.
+    @discardableResult public func setKey(_ provider: String, _ key: String) async -> Bool {
+        (try? await client?.call("keys.set", ["provider": provider, "key": key], as: Nothing.self)) != nil
+    }
+    private struct Nothing: Decodable, Sendable {}
     public func failToStart(_ message: String) { phase = .failed(message) }
 
     private func handle(_ event: HostEvent) {

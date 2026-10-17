@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
 
 namespace Lexi.Core;
@@ -59,7 +60,12 @@ public sealed record AiEnvelope(AiEntry Entry, string EvidenceHash, DateTimeOffs
 
 public static class Json
 {
-    public static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = false };
+    // Generated metadata only (JsonContext.cs), so Core runs unchanged under NativeAOT.
+    public static IJsonTypeInfoResolver Resolver => CoreJson.Default;
+    public static readonly JsonSerializerOptions Options = new()
+    { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = false, TypeInfoResolver = CoreJson.Default };
+    // For a front end's own files and for developer tools: Core's types first, then any other type by reflection.
+    public static readonly JsonSerializerOptions Flexible = new(Options) { TypeInfoResolver = JsonTypeInfoResolver.Combine(CoreJson.Default, new DefaultJsonTypeInfoResolver()) };
 }
 
 public sealed class AppSettings
@@ -96,10 +102,12 @@ public sealed class AppSettings
         {
             var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(Path.Combine(root, "settings.json")), Json.Options) ?? new();
             SpeechCatalog.AdoptLocal(settings);
-            return settings;
+            return Adopt(settings);
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return new(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return Adopt(new()); }
     }
+    // Settings without a subscription client available start from the API models.
+    private static AppSettings Adopt(AppSettings settings) { if (ModelCatalog.ApiOnly) ModelCatalog.UseApiDefaults(settings); return settings; }
     public void Save(string root)
     {
         Directory.CreateDirectory(root);

@@ -59,16 +59,16 @@ internal static class LexicalChecks
         Check(LexicalLabels.Usage("cryptography, blockchain") == "密码学 · 区块链", "domain tags remain specific and understandable");
         var inflected = new AiEntry("TEE",true,[abbreviation],"","unverified","",[new("tee","verb",[new("past",["teed"])])]);
         Check(ModelInflections.Sanitize("TEE",inflected)?.Length == 0, "abbreviations cannot inherit a lowercase verb paradigm");
-        var parsed = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(inflected with { Etymology="首字母缩写。" },Json.Options),"TEE",null,true);
+        var parsed = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(inflected with { Etymology="首字母缩写。" },Json.Flexible),"TEE",null,true);
         Check(parsed.Etymology == "首字母缩写。" && parsed.Senses[0].Expansion == abbreviation.Expansion, "expanded lexical fields survive validated complete answers");
-        var preview = StreamingEntry.Read(JsonSerializer.Serialize(parsed,Json.Options),"TEE");
+        var preview = StreamingEntry.Read(JsonSerializer.Serialize(parsed,Json.Flexible),"TEE");
         Check(preview?.Senses[0].LexicalForm == "abbreviation" && preview.Senses[0].Expansion == abbreviation.Expansion && preview.Etymology == "", "streaming retains abbreviation identity but waits for complete etymology");
         var etymologyEvidence = DictionaryEvidence.Combine("nerf", [], null, origins);
         Check(CodexDictionary.DefineRequest("nerf", etymologyEvidence).Contains("etymologyEvidence") &&
             CodexDictionary.DefineRequest("nerf", etymologyEvidence).Contains("brand name"), "source etymology joins the existing definition request without a separate model call");
         Check(CodexDictionary.EvidenceHash(etymologyEvidence) == CodexDictionary.EvidenceHash(etymologyEvidence! with { Etymologies = [] }),
             "late optional etymology does not invalidate already usable definition caches");
-        try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(inflected with { Word="tee" },Json.Options),"TEE",null); Check(false,"wrong-case acronym"); }
+        try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(inflected with { Word="tee" },Json.Flexible),"TEE",null); Check(false,"wrong-case acronym"); }
         catch (InvalidDataException) { Check(true,"a lowercase model response cannot replace an uppercase acronym entry"); }
         CheckQuickRead(Check);
         OverviewTimingChecks.Run(Check);
@@ -98,7 +98,7 @@ internal static class LexicalChecks
         var before = new SenseMergeRequest("TEE",[candidate with {Sense=sense with {Gloss=""}}],[]);
         var after = new SenseMergeRequest("TEE",[candidate],[]);
         check(before.InputHash==after.InputHash, "presentation-only glosses do not invalidate existing sense-judge caches");
-        var parsed=CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(new AiEntry("TEE",true,[sense],"","source_based"),Json.Options),"TEE",evidence);
+        var parsed=CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(new AiEntry("TEE",true,[sense],"","source_based"),Json.Flexible),"TEE",evidence);
         check(parsed.Senses[0].Gloss==sense.Gloss, "short glosses survive provider validation and cache round trips");
     }
     private sealed class Handler(Func<HttpRequestMessage,CancellationToken,Task<HttpResponseMessage>> send) : HttpMessageHandler

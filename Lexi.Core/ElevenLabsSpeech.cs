@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -13,7 +14,7 @@ public sealed partial class SpeechClient
         var request = new HttpRequestMessage(HttpMethod.Post,
             "https://api.elevenlabs.io/v1/text-to-speech/" + Uri.EscapeDataString(options.Voice) + "?output_format=mp3_44100_128");
         request.Headers.Add("xi-api-key", apiKey.Trim());
-        request.Content = new StringContent(JsonSerializer.Serialize(new { text, model_id = options.Model }, Json.Options), Encoding.UTF8, "application/json");
+        request.Content = new StringContent(JsonSerializer.Serialize(new ElevenSpeechBody(text, options.Model), Json.Options), Encoding.UTF8, "application/json");
         return request;
     }
 
@@ -118,3 +119,5 @@ public sealed partial class SpeechClient
         return new InvalidOperationException(message);
     }
 }
+
+internal sealed record ElevenSpeechBody(string Text, [property: JsonPropertyName("model_id")] string ModelId);

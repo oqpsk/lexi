@@ -114,6 +114,12 @@ internal static class HostChecks
             var updated = (await client.Call("settings.update", new { settings = new { mergeSenses = false, reasoningEffort = "high" } })).GetProperty("result").GetProperty("settings");
             Check(!updated.GetProperty("mergeSenses").GetBoolean() && updated.GetProperty("reasoningEffort").GetString() == "low" &&
                 !AppSettings.Load(user).MergeSenses, "valid settings are saved with the fixed Codex options");
+            const string modelKey = "synthetic-host-model-key";
+            var keySet = await client.Call("keys.set", new { provider = "anthropic", key = modelKey });
+            Check(keySet.GetProperty("result").ValueKind == JsonValueKind.Object && !keySet.GetRawText().Contains(modelKey) &&
+                (await client.Call("keys.set", new { provider = "codex", key = modelKey })).GetProperty("error").GetProperty("code").GetString() == "invalid_params" &&
+                !Directory.EnumerateFiles(user, "*", SearchOption.AllDirectories).Any(f => File.ReadAllText(f).Contains(modelKey)),
+                "model API keys are taken for API services only and never returned or written");
             await CheckSpeech(client, user, speechKey, syntheticAudio, speechRequests, Check);
             var offline = (await client.Call("settings.setOnline", new { online = false })).GetProperty("result");
             Check(offline.GetProperty("controls").GetProperty("onlineLabel").GetString() == "离线查询" && !AppSettings.Load(user).Online &&

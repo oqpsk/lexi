@@ -16,18 +16,18 @@ public sealed class CodexDictionary(string assetFolder, string userRoot)
         var terminologyOnly = evidence?.Senses is { Length: > 0 } && evidence.Senses.All(s => s.PartOfSpeech.StartsWith("terminology pair"));
         return "Define the complete English or Chinese term. Use established specialist meanings when appropriate. " +
             (terminologyOnly ? "The evidence contains terminology equivalents, not explanatory definitions. Give the dominant technical meaning in ONE sense. Do not invent a functional distinction between synonymous names. Mark explanatory details unverified. " : "") + "\n" +
-            JsonSerializer.Serialize(new
+            JsonSerializer.Serialize(new DefinePrompt
             {
-                task = "define", query, maxSenses = terminologyOnly ? 1 : 6,
-                inputCase = Queries.AbbreviationCandidate(query) ? "uppercase: check established abbreviations and give their full expansions before lowercase homographs" : "preserve the query spelling",
-                coverageInterests = new[] { "cryptoassets and blockchain", "cryptography", "information security and confidential computing" },
-                coverageEvidence = evidence?.Senses.Select((s, i) => new { sense = s, number = i + 1 })
+                Task = "define", Query = query, MaxSenses = terminologyOnly ? 1 : 6,
+                InputCase = Queries.AbbreviationCandidate(query) ? "uppercase: check established abbreviations and give their full expansions before lowercase homographs" : "preserve the query spelling",
+                CoverageInterests = new[] { "cryptoassets and blockchain", "cryptography", "information security and confidential computing" },
+                CoverageEvidence = evidence?.Senses.Select((s, i) => new { sense = s, number = i + 1 })
                     .Where(s => LexicalCoverage.Specialist(s.sense.PartOfSpeech + " " + s.sense.Definition) || SenseMerging.IsCurrent(s.sense.PartOfSpeech + " " + s.sense.Definition)).Select(s => s.number).ToArray() ?? [],
-                coverage = "Define the established core meaning first, in its natural domain. Check coverageInterests for additional independently established meanings, even when general dictionaries omit them. These interests are a recall checklist, not the context of the query or a ranking instruction. Being used in an industry is not a new lexical meaning: keep such applications as examples under the general definition. Do not narrow general software, computing, scientific or everyday concepts to blockchain/security, or copy interest labels onto unrelated meanings. Preserve established specialist meanings when their referent or defining mechanism differs. Distinguish slang, literal and proper-name senses; preserve common meanings rather than spending the limit on obscure names or language families. Case-insensitive input may still refer to a capitalized meme name. Do not invent a slang meaning when none is known.",
-                overview = "Mark coreMeaning independently of coverage order: identify the central meaning of the whole term, normally one, at most two. Industry application examples cannot replace the standalone definition. Coverage interests ensure recall; they must not displace the word's core concept with a peripheral person or specialized reuse.",
-                translation = "Keep the established Chinese name in chineseTerm, at the start of chinese, and at the start of the short gloss. The translation takes priority over a descriptive paraphrase; never invent an unfamiliar name.",
-                etymologyEvidence = evidence?.Etymologies ?? [],
-                evidence = EvidenceText(evidence)
+                Coverage = "Define the established core meaning first, in its natural domain. Check coverageInterests for additional independently established meanings, even when general dictionaries omit them. These interests are a recall checklist, not the context of the query or a ranking instruction. Being used in an industry is not a new lexical meaning: keep such applications as examples under the general definition. Do not narrow general software, computing, scientific or everyday concepts to blockchain/security, or copy interest labels onto unrelated meanings. Preserve established specialist meanings when their referent or defining mechanism differs. Distinguish slang, literal and proper-name senses; preserve common meanings rather than spending the limit on obscure names or language families. Case-insensitive input may still refer to a capitalized meme name. Do not invent a slang meaning when none is known.",
+                Overview = "Mark coreMeaning independently of coverage order: identify the central meaning of the whole term, normally one, at most two. Industry application examples cannot replace the standalone definition. Coverage interests ensure recall; they must not displace the word's core concept with a peripheral person or specialized reuse.",
+                Translation = "Keep the established Chinese name in chineseTerm, at the start of chinese, and at the start of the short gloss. The translation takes priority over a descriptive paraphrase; never invent an unfamiliar name.",
+                EtymologyEvidence = evidence?.Etymologies ?? [],
+                Evidence = EvidenceText(evidence)
             }, Json.Options);
     }
     public static AiEntry ParseAndValidate(string text, string query, OnlineEntry? online, bool requireWordForms = false)
@@ -145,4 +145,19 @@ public sealed class CodexDictionary(string assetFolder, string userRoot)
             try { await errorTask; } catch (Exception ex) when (ex is OperationCanceledException or IOException) { }
         }
     }
+}
+
+internal sealed record DefinePrompt
+{
+    public required string Task { get; init; }
+    public required string Query { get; init; }
+    public int MaxSenses { get; init; }
+    public required string InputCase { get; init; }
+    public required string[] CoverageInterests { get; init; }
+    public required int[] CoverageEvidence { get; init; }
+    public required string Coverage { get; init; }
+    public required string Overview { get; init; }
+    public required string Translation { get; init; }
+    public required EtymologyExcerpt[] EtymologyEvidence { get; init; }
+    public required string Evidence { get; init; }
 }

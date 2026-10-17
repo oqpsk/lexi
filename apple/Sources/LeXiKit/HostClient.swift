@@ -13,11 +13,59 @@ public enum HostEvent: Sendable {
     case exited(Int32)
 }
 
-// One lexi-host process. Requests are matched to responses by id; "view" events are delivered
-// in the order the host wrote them. Cancelling a Swift task cancels its request in the host.
-public actor HostClient {
+// How protocol lines travel to and from the host: a lexi-host child process on macOS, or the host
+// library compiled into the app on iOS, which cannot start processes (EmbeddedTransport).
+public protocol HostTransport: AnyObject, Sendable {
+    // Starts the host and returns the lines it writes, in order. onExit runs once if it stops on its own.
+    func start(onExit: @escaping @Sendable (Int32) -> Void) throws -> AsyncThrowingStream<Data, Error>
+    // One request line, ending in a newline.
+    func write(_ line: Data) throws
+    // Ends the input, like closing standard input; the host finishes and stops.
+    func close()
+}
+
+#if os(macOS)
+// One lexi-host process speaking over its standard input and output.
+public final class ProcessTransport: HostTransport, @unchecked Sendable {
     private let process = Process()
     private let input = Pipe(), output = Pipe()
+
+    public init(executable: URL, arguments: [String] = []) {
+        process.executableURL = executable
+        process.arguments = arguments
+    }
+
+    public func start(onExit: @escaping @Sendable (Int32) -> Void) throws -> AsyncThrowingStream<Data, Error> {
+        // A closed pipe must surface as a write error, not terminate the app.
+        signal(SIGPIPE, SIG_IGN)
+        process.standardInput = input
+        process.standardOutput = output
+        // Diagnostics carry no protocol data; discarding them means the host can never block on stderr.
+        process.standardError = FileHandle.nullDevice
+        process.terminationHandler = { finished in onExit(finished.terminationStatus) }
+        try process.run()
+        let lines = output.fileHandleForReading.bytes.lines
+        return AsyncThrowingStream { continuation in
+            Task.detached {
+                do { for try await line in lines { continuation.yield(Data(line.utf8)) }; continuation.finish() }
+                catch { continuation.finish(throwing: error) }
+            }
+        }
+    }
+
+    public func write(_ line: Data) throws { try input.fileHandleForWriting.write(contentsOf: line) }
+
+    public func close() {
+        try? input.fileHandleForWriting.close()
+        if process.isRunning { process.terminate() }
+    }
+}
+#endif
+
+// One host, over any transport. Requests are matched to responses by id; "view" events are
+// delivered in the order the host wrote them. Cancelling a Swift task cancels its request in the host.
+public actor HostClient {
+    private let transport: any HostTransport
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private let events: @Sendable (HostEvent) -> Void
@@ -25,27 +73,21 @@ public actor HostClient {
     private var next = 0
     private var stopped = false
 
-    public init(executable: URL, arguments: [String] = [], events: @escaping @Sendable (HostEvent) -> Void) {
-        process.executableURL = executable
-        process.arguments = arguments
+    public init(transport: any HostTransport, events: @escaping @Sendable (HostEvent) -> Void) {
+        self.transport = transport
         self.events = events
     }
 
+#if os(macOS)
+    public init(executable: URL, arguments: [String] = [], events: @escaping @Sendable (HostEvent) -> Void) {
+        self.init(transport: ProcessTransport(executable: executable, arguments: arguments), events: events)
+    }
+#endif
+
     public func start() throws {
-        // A closed pipe must surface as a write error, not terminate the app.
-        signal(SIGPIPE, SIG_IGN)
-        process.standardInput = input
-        process.standardOutput = output
-        // Diagnostics carry no protocol data; discarding them means the host can never block on stderr.
-        process.standardError = FileHandle.nullDevice
-        process.terminationHandler = { [weak self] finished in
-            let status = finished.terminationStatus
-            Task { await self?.exited(status) }
-        }
-        try process.run()
-        let lines = output.fileHandleForReading.bytes.lines
+        let lines = try transport.start { [weak self] status in Task { await self?.exited(status) } }
         Task.detached { [weak self] in
-            do { for try await line in lines { await self?.receive(Data(line.utf8)) } } catch {}
+            do { for try await line in lines { await self?.receive(line) } } catch {}
         }
     }
 
@@ -66,8 +108,7 @@ public actor HostClient {
     public func stop() async {
         guard !stopped else { return }
         _ = try? await send("shutdown", [String: String]()) as Response<Empty>
-        try? input.fileHandleForWriting.close()
-        if process.isRunning { process.terminate() }
+        transport.close()
     }
 
     private func send<Result: Decodable>(_ method: String, _ parameters: some Encodable & Sendable) async throws -> Response<Result> {
@@ -79,7 +120,7 @@ public actor HostClient {
         let data: Data = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 pending[id] = continuation
-                do { try input.fileHandleForWriting.write(contentsOf: line) }
+                do { try transport.write(line) }
                 catch { pending.removeValue(forKey: id)?.resume(throwing: HostError.exited) }
             }
         } onCancel: {
@@ -95,7 +136,7 @@ public actor HostClient {
         next += 1
         var line = (try? encoder.encode(Request(id: next, method: "cancel", params: ["id": id]))) ?? Data()
         line.append(0x0A)
-        try? input.fileHandleForWriting.write(contentsOf: line)
+        try? transport.write(line)
     }
 
     private func receive(_ line: Data) {
@@ -121,6 +162,7 @@ public actor HostClient {
     private struct Empty: Decodable {}
 }
 
+#if os(macOS)
 public enum HostLocation {
     // The app bundle carries lexi-host in Contents/Helpers and its model files in Resources/assets.
     // LEXI_HOST points development runs (swift run, tests) at a published host instead.
@@ -136,3 +178,4 @@ public enum HostLocation {
         return (helper, assets.isEmpty ? [] : ["--assets", assets])
     }
 }
+#endif

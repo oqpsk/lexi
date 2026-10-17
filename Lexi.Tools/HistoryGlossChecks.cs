@@ -19,7 +19,7 @@ internal static class HistoryGlossChecks
         Check(reopened.Entries[0].Query=="First paragraph.\n\nSecond paragraph." && reopened.Entries[0].Preview=="First paragraph. Second paragraph." && reopened.Entries[0].Translation,
             "history persists full translation paragraphs while exposing only a one-line preview");
         var cache=new Cache(workspace);
-        await cache.WriteAsync("fixture-cache","TEE",new {value="retained"});
+        await cache.WriteAsync("fixture-cache","TEE",JsonDocument.Parse("{\"value\":\"retained\"}").RootElement);
         Check(reopened.Remove(reopened.Entries.Single(e=>e.Query=="TEE")), "individual history deletion succeeds");
         var afterDelete=new QueryHistory(workspace);
         Check(afterDelete.Entries.All(e=>e.Query!="TEE") && afterDelete.Entries.Any(e=>e.Query=="tee") && cache.Read<JsonElement>("fixture-cache","TEE").GetProperty("value").GetString()=="retained",
@@ -52,8 +52,8 @@ internal static class HistoryGlossChecks
         Check(QuickRead.Create([new([unnamed,named with {Provisional=true}])],[],[]).Single().Text=="简短解释",
             "unfinished translations never enter a completed overview");
         var entry=new AiEntry("fixture",true,[sense],"","unverified",WordForms:[]);
-        var parsed=CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry,Json.Options),"fixture",null,true);
-        Check(parsed.Senses[0].ChineseTerm=="约定译名" && StreamingEntry.Read(JsonSerializer.Serialize(entry,Json.Options),"fixture")!.Senses[0].ChineseTerm=="约定译名",
+        var parsed=CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry,Json.Flexible),"fixture",null,true);
+        Check(parsed.Senses[0].ChineseTerm=="约定译名" && StreamingEntry.Read(JsonSerializer.Serialize(entry,Json.Flexible),"fixture")!.Senses[0].ChineseTerm=="约定译名",
             "structured equivalents survive complete validation and streaming definition display");
         var settings=new AppSettings {Provider=model.Provider,Model=model.Model,ParallelLookup=false,MergeSenses=false};
         var legacyCache=new Cache(Path.Combine(workspace,"legacy"));

@@ -15,7 +15,7 @@ internal static class OverviewTimingChecks
         var request = SenseMerging.Request("fixture", answers);
         var plan = new SenseMergePlan(request.InputHash, request.Pairs.Select(p => new SenseVerdict(p.A, p.B,
             p.A=="m0s1" && p.B=="m1s0" ? "equivalent" : "different", 1)).ToArray(), ["m1s0"]);
-        var parsed = SenseMerging.Parse(JsonSerializer.Serialize(plan, Json.Options), request);
+        var parsed = SenseMerging.Parse(JsonSerializer.Serialize(plan, Json.Flexible), request);
         var groups = SenseMerging.Group(answers, parsed);
         var summary = QuickRead.Create(groups, [], []);
         check(groups.Length==2 && groups[0].Representative.Sense==central && groups[0].Variants.Length==2,
@@ -37,10 +37,10 @@ internal static class OverviewTimingChecks
             "provisional core flags never enter the overview");
         foreach(var invalid in new[]{new[]{"unknown"},new[]{"m0s1","m0s1"},new[]{"m0s0","m0s1","m1s0"}})
         {
-            try { SenseMerging.Parse(JsonSerializer.Serialize(plan with {Overview=invalid},Json.Options),request); check(false,"bad overview accepted"); }
+            try { SenseMerging.Parse(JsonSerializer.Serialize(plan with {Overview=invalid},Json.Flexible),request); check(false,"bad overview accepted"); }
             catch(InvalidDataException) { check(true,"unknown, repeated or oversized overview IDs are rejected"); }
         }
-        var parsedEntry = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(fresh[0].Entry,Json.Options),"fixture",null);
+        var parsedEntry = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(fresh[0].Entry,Json.Flexible),"fixture",null);
         check(parsedEntry.Senses.Count(s=>s.CoreMeaning==true)==1 && parsedEntry.Senses.Count(s=>s.CoreMeaning==false)==1,
             "core selection metadata survives validation and definition cache serialization");
         var general = central with { English="A general structured data representation.", Chinese="通用结构化数据表示", Gloss="通用数据表示", Register="software engineering", CoreMeaning=true };

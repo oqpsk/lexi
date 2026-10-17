@@ -15,25 +15,23 @@ public sealed record SenseMergePlan(string InputHash, SenseVerdict[] Pairs, stri
 public sealed record SenseMergeRequest(string Query, SenseCandidate[] Candidates, SensePair[] Pairs)
 {
     // Presentation metadata cannot influence the independent core-meaning judgment.
-    public string InputHash => Cache.Hash(JsonSerializer.Serialize(new
-    {
-        version = 5, Query,
-        Candidates = Candidates.Select(c => new
-        {
-            c.Id, c.Model,
-            Sense = new { c.Sense.PartOfSpeech, c.Sense.English, c.Sense.Chinese, c.Sense.Register,
-                c.Sense.Example, c.Sense.ExampleChinese, c.Sense.Evidence, c.Sense.LexicalForm, c.Sense.Expansion },
-            c.EvidenceStatus, c.Provisional
-        }),
-        Pairs
-    }, Json.Options));
-    public string Prompt => JsonSerializer.Serialize(new
-    {
-        task = "compare_senses", inputHash = InputHash, query = Query,
-        senses = Candidates.Select(c => new { c.Id, c.Sense.PartOfSpeech, c.Sense.English, c.Sense.Chinese, c.Sense.Register, c.Sense.Example, c.Sense.LexicalForm, c.Sense.Expansion }),
-        pairs = Pairs
-    }, Json.Options);
+    public string InputHash => Cache.Hash(JsonSerializer.Serialize(new MergeIdentity(5, Query,
+        Candidates.Select(c => new MergeCandidateIdentity(c.Id, c.Model,
+            new MergeSenseIdentity(c.Sense.PartOfSpeech, c.Sense.English, c.Sense.Chinese, c.Sense.Register,
+                c.Sense.Example, c.Sense.ExampleChinese, c.Sense.Evidence, c.Sense.LexicalForm, c.Sense.Expansion),
+            c.EvidenceStatus, c.Provisional)).ToArray(), Pairs), Json.Options));
+    public string Prompt => JsonSerializer.Serialize(new MergePrompt("compare_senses", InputHash, Query,
+        Candidates.Select(c => new MergePromptSense(c.Id, c.Sense.PartOfSpeech, c.Sense.English, c.Sense.Chinese, c.Sense.Register,
+            c.Sense.Example, c.Sense.LexicalForm, c.Sense.Expansion)).ToArray(), Pairs), Json.Options);
 }
+
+internal sealed record MergeIdentity(int Version, string Query, MergeCandidateIdentity[] Candidates, SensePair[] Pairs);
+internal sealed record MergeCandidateIdentity(string Id, LookupModel Model, MergeSenseIdentity Sense, string EvidenceStatus, bool Provisional);
+internal sealed record MergeSenseIdentity(string PartOfSpeech, string English, string Chinese, string Register,
+    string Example, string ExampleChinese, int[] Evidence, string LexicalForm, string Expansion);
+internal sealed record MergePrompt(string Task, string InputHash, string Query, MergePromptSense[] Senses, SensePair[] Pairs);
+internal sealed record MergePromptSense(string Id, string PartOfSpeech, string English, string Chinese, string Register,
+    string Example, string LexicalForm, string Expansion);
 
 public static class SenseMerging
 {

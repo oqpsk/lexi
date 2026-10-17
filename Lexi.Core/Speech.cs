@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -11,14 +12,15 @@ public sealed record SpeechVoice(string Id, string Name)
 { public override string ToString() => Name; }
 public sealed record SpeechOptions(string Provider, string Model, string Voice)
 {
-    public string CacheKey(string text) => Cache.Hash(JsonSerializer.Serialize(new { version = 1, text, Provider, Model, Voice }, Json.Options));
+    public string CacheKey(string text) => Cache.Hash(JsonSerializer.Serialize(new SpeechCacheKey(1, text, Provider, Model, Voice), Json.Options));
     public static SpeechOptions From(AppSettings settings) => new(settings.SpeechProvider, settings.SpeechModel, settings.SpeechVoice);
 }
 
 public static class SpeechCatalog
 {
-    // Local synthesis belongs to each front end: Windows SAPI voices or macOS system voices.
-    public static SpeechModel Local { get; } = OperatingSystem.IsMacOS() ? new("macos", "avspeech", "macOS 本地发音") : new("windows", "sapi", "Windows 本地发音");
+    // Local synthesis belongs to each front end: Windows SAPI voices, or macOS and iOS system voices.
+    public static SpeechModel Local { get; } = OperatingSystem.IsIOS() ? new("ios", "avspeech", "iOS 本地发音")
+        : OperatingSystem.IsMacOS() ? new("macos", "avspeech", "macOS 本地发音") : new("windows", "sapi", "Windows 本地发音");
     public static bool IsLocal(string provider) => provider == Local.Provider;
     public static SpeechModel[] Models => [Local, new("openai", "gpt-4o-mini-tts", "OpenAI · GPT-4o mini TTS"),
         new("openai", "tts-1", "OpenAI · TTS-1"), new("openai", "tts-1-hd", "OpenAI · TTS-1 HD"), new("xai", "grok-tts", "Grok · TTS"),
@@ -53,7 +55,7 @@ public static class SpeechCatalog
     // Local synthesis saved on the other platform stays local here; its voice IDs belong to that system.
     public static void AdoptLocal(AppSettings settings)
     {
-        if (settings.SpeechProvider is not ("windows" or "macos") || IsLocal(settings.SpeechProvider)) return;
+        if (settings.SpeechProvider is not ("windows" or "macos" or "ios") || IsLocal(settings.SpeechProvider)) return;
         settings.SpeechProvider = Local.Provider; settings.SpeechModel = Local.Id; settings.SpeechVoice = "auto"; settings.SpeechVoiceName = "";
     }
 }
@@ -69,8 +71,8 @@ public sealed partial class SpeechClient : IDisposable
         if (options.Provider is not ("openai" or "xai" or "elevenlabs")) throw new InvalidOperationException("此模型不使用在线语音接口。");
         ValidateKey(apiKey);
         if (options.Provider == "elevenlabs") return ElevenRequest(text, options, apiKey);
-        object body = options.Provider == "openai" ? new { model = options.Model, voice = options.Voice, input = text, response_format = "mp3" } :
-            new { text, voice_id = options.Voice, language = "auto", output_format = new { codec = "mp3", sample_rate = 24000, bit_rate = 128000 } };
+        object body = options.Provider == "openai" ? new OpenAiSpeechBody(options.Model, options.Voice, text, "mp3") :
+            new XaiSpeechBody(text, options.Voice, "auto", new XaiAudioFormat("mp3", 24000, 128000));
         var request = new HttpRequestMessage(HttpMethod.Post, options.Provider == "openai" ? "https://api.openai.com/v1/audio/speech" : "https://api.x.ai/v1/tts");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey.Trim());
         request.Content = new StringContent(JsonSerializer.Serialize(body, Json.Options), Encoding.UTF8, "application/json");
@@ -119,3 +121,9 @@ public sealed partial class SpeechClient : IDisposable
         (bytes[0] == 'I' && bytes[1] == 'D' && bytes[2] == '3' || bytes[0] == 0xff && (bytes[1] & 0xe0) == 0xe0);
     public void Dispose() => client.Dispose();
 }
+
+internal sealed record SpeechCacheKey(int Version, string Text, string Provider, string Model, string Voice);
+internal sealed record OpenAiSpeechBody(string Model, string Voice, string Input, [property: JsonPropertyName("response_format")] string ResponseFormat);
+internal sealed record XaiSpeechBody(string Text, [property: JsonPropertyName("voice_id")] string VoiceId, string Language,
+    [property: JsonPropertyName("output_format")] XaiAudioFormat OutputFormat);
+internal sealed record XaiAudioFormat(string Codec, [property: JsonPropertyName("sample_rate")] int SampleRate, [property: JsonPropertyName("bit_rate")] int BitRate);

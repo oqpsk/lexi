@@ -58,7 +58,8 @@ public struct SpeechKeyError: Error, LocalizedError {
 // keychain. A new item's access list trusts only the app that created it, and items do not sync.
 // Subscription credentials of the official clients are never read.
 public struct KeychainSpeechKeys: SpeechKeys {
-    public static let providers = ["openai", "xai", "elevenlabs"]
+    // Speech services, plus Anthropic for model access on iOS (the OpenAI key serves both there).
+    public static let providers = ["openai", "xai", "elevenlabs", "anthropic"]
     private let service: String
     public init(service: String = "io.github.oqpsk.lexi.speech") { self.service = service }
 
@@ -102,6 +103,7 @@ public struct KeychainSpeechKeys: SpeechKeys {
         switch provider {
         case "openai": "OpenAI API Key"
         case "xai": "Grok / xAI API Key"
+        case "anthropic": "Anthropic API Key"
         default: "ElevenLabs API Key"
         }
     }

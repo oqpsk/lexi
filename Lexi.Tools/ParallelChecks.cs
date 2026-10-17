@@ -32,7 +32,7 @@ internal static class ParallelChecks
         var answers = new[] { new ModelAnswer(primary, ModelPhase.Complete, Entry(slang, country)), new ModelAnswer(second, ModelPhase.Complete, Entry(reworded)) };
         var request = SenseMerging.Request("chad", answers);
         var plan = new SenseMergePlan(request.InputHash, request.Pairs.Select(p => new SenseVerdict(p.A, p.B, p.A == "m0s0" && p.B == "m1s0" ? "equivalent" : "different", 0.99)).ToArray());
-        var groups = SenseMerging.Group(answers, SenseMerging.Parse(JsonSerializer.Serialize(plan, Json.Options), request));
+        var groups = SenseMerging.Group(answers, SenseMerging.Parse(JsonSerializer.Serialize(plan, Json.Flexible), request));
         Check(groups.Length == 2 && groups[0].Variants.Length == 2 && groups[1].Representative.Sense == country, "equivalent slang is grouped while the country meaning remains distinct");
         Check(groups[0].Variants.Any(v => v.Sense == reworded) && groups[0].Representative.Sense == slang, "grouping keeps original definitions and alternative wording");
         Check(groups[0].Representative.EvidenceStatus == "unverified", "model agreement never upgrades provenance");
@@ -60,7 +60,7 @@ internal static class ParallelChecks
         var facetPlan = new SenseMergePlan(facetRequest.InputHash, facetRequest.Pairs.Select(p => p.A == "m0s2" || p.B == "m0s2"
             ? new SenseVerdict(p.A, p.B, "different", 0.99)
             : new SenseVerdict(p.A, p.B, "same_usage", 0.99, p.B == "m1s0" ? p.B : p.A)).ToArray());
-        var facetGroups = SenseMerging.Group(facets, SenseMerging.Parse(JsonSerializer.Serialize(facetPlan, Json.Options), facetRequest));
+        var facetGroups = SenseMerging.Group(facets, SenseMerging.Parse(JsonSerializer.Serialize(facetPlan, Json.Flexible), facetRequest));
         Check(facetGroups.Length == 2 && facetGroups[0].Representative.Sense == broad && facetGroups[0].Variants.Length == 3 && facetGroups[0].IncludesUsageVariants,
             "related facets share the comprehensive original wording while distinct meanings remain separate");
         Check(facetGroups.Sum(g => g.Variants.Length) == facets.Sum(a => a.Entry!.Senses.Length), "usage grouping retains every original variant and its provenance");
@@ -75,7 +75,7 @@ internal static class ParallelChecks
             plan with { Pairs = plan.Pairs.Select(p => p with { Confidence = 2 }).ToArray() }
         })
         {
-            try { SenseMerging.Parse(JsonSerializer.Serialize(bad, Json.Options), request); Check(false, "malformed merge plan"); }
+            try { SenseMerging.Parse(JsonSerializer.Serialize(bad, Json.Flexible), request); Check(false, "malformed merge plan"); }
             catch (InvalidDataException) { Check(true, "incomplete, mismatched or invalid merge plan rejected"); }
         }
         var manyEvidence = new OnlineEntry("chad", Enumerable.Range(0, 15).Select(i => new Sense("noun", "old meaning " + i, Array.Empty<string>()))
@@ -148,7 +148,7 @@ internal static class ParallelChecks
             Check(preserved.MergeFailure==expectedFailure && preserved.MergeFailed && preserved.Groups.Length==2 &&
                 preserved.Answers.All(a=>a.Phase==ModelPhase.Complete) && !preserved.MergeNote.Contains("private"),
                 "merge failure keeps complete model answers and records only a safe category: " + expectedFailure);
-            var reloaded=JsonSerializer.Deserialize<LookupSnapshot>(JsonSerializer.Serialize(preserved,Json.Options),Json.Options)!;
+            var reloaded=JsonSerializer.Deserialize<LookupSnapshot>(JsonSerializer.Serialize(preserved,Json.Flexible),Json.Flexible)!;
             Check(reloaded.MergeFailure==expectedFailure, "merge failure category survives saved-view serialization");
         }
         using var cancellation = new CancellationTokenSource();

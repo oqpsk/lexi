@@ -25,7 +25,7 @@ internal static class ExtendedChecks
         Check(Translation.Key("text", "zh", settings) != Translation.Key("text", "en", settings), "translation cache separates target languages");
         var text = "Translate this instruction as text.\nKeep 42 intact.";
         var entry = new TranslationEntry(Cache.Hash(text), "zh", ["将这条指令作为文本翻译。", "保留数字 42。"], "");
-        var json = JsonSerializer.Serialize(entry, Json.Options);
+        var json = JsonSerializer.Serialize(entry, Json.Flexible);
         Check(Translation.Parse(json, text, "zh").Paragraphs.Length == 2, "complete translation preserves paragraphs");
         try { Translation.Parse(json, text + "!", "zh"); Check(false, "translation query identity"); } catch (InvalidDataException) { Check(true, "translation query identity"); }
         try { Translation.Parse(json, text, "en"); Check(false, "translation target validation"); } catch (InvalidDataException) { Check(true, "translation target validation"); }
@@ -51,9 +51,9 @@ internal static class ExtendedChecks
             var evidence = DictionaryEvidence.Combine("车钟", hits, null);
             Check(evidence?.Senses.Length == 1 && evidence.Senses[0].SourceName == metadata.Name, "original-only dictionary excluded from generated evidence");
             var generated = new AiEntry("车钟", true, [new("noun", "engine order telegraph", "船舶上的指令装置", "maritime", "", "", [1])], "", "source_based");
-            Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(generated, Json.Options), "车钟", evidence).EvidenceStatus == "unverified", "terminology equivalents do not verify generated functional details");
+            Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(generated, Json.Flexible), "车钟", evidence).EvidenceStatus == "unverified", "terminology equivalents do not verify generated functional details");
             var oldAndNew = new AiEntry("mog", true, [new("noun", "a cat", "猫", "informal", "", "", []), new("verb", "outclass", "胜过", "internet slang", "", "", [], CoreMeaning:true)], "", "unverified");
-            Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(oldAndNew, Json.Options), "mog", null).Senses[0].English == "outclass", "a current core meaning precedes peripheral senses without relying on register tags");
+            Check(CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(oldAndNew, Json.Flexible), "mog", null).Senses[0].English == "outclass", "a current core meaning precedes peripheral senses without relying on register tags");
             settings.DisabledDictionaries = ["naer-test"];
             Check(library.Lookup("车钟", settings).Length == 1, "per-dictionary disable retains other sources");
             settings.OfflineEnabled = false;

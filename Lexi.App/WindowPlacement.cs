@@ -22,7 +22,7 @@ internal sealed record WindowPosition(int Left, int Top, int Right, int Bottom, 
         try
         {
             if (!File.Exists(path) || new FileInfo(path).Length > 4096) return null;
-            var value = JsonSerializer.Deserialize<WindowPosition>(File.ReadAllText(path), Json.Options);
+            var value = JsonSerializer.Deserialize<WindowPosition>(File.ReadAllText(path), Json.Flexible);
             return value?.Valid == true ? value : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return null; }
@@ -34,7 +34,7 @@ internal sealed record WindowPosition(int Left, int Top, int Right, int Bottom, 
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            File.WriteAllText(temp, JsonSerializer.Serialize(this, Json.Options));
+            File.WriteAllText(temp, JsonSerializer.Serialize(this, Json.Flexible));
             File.Move(temp, path, true); return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }

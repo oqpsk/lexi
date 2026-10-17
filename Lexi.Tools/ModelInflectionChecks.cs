@@ -12,7 +12,7 @@ internal static class ModelInflectionChecks
         AiWordForms verbs = new("glim", "verb", [new("past", ["glimmed"]), new("pastParticiple", ["glimmed"]), new("presentParticiple", ["glimming"]), new("thirdPerson", ["glims"])]);
         AiWordForms nouns = new("glim", "noun", [new("plural", ["glims"])]);
         var entry = new AiEntry("glim", true, senses, "", "unverified", WordForms: [verbs, nouns]);
-        var parsed = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry, Json.Options), "glim", null, true);
+        var parsed = CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry, Json.Flexible), "glim", null, true);
         Check(parsed.WordForms?.Length == 2, "a model can add verb morphology alongside a known noun usage");
         WordFormSet[] recorded = [new("glim", [new("s", "复数", ["glims"])], "Local dictionary", "https://example.org/glim")];
         var supplemented = ModelInflections.Supplement("glim", recorded, [(primary, parsed)]).Single();
@@ -39,9 +39,9 @@ internal static class ModelInflectionChecks
             "dictionary data takes precedence without discarding a conflicting model alternative");
         Check(ModelInflections.Supplement("glim", [], [(primary, entry), (secondary, entry)]).Single().Forms.All(f => f.SourceName.Contains("模型补充")),
             "agreement between models never converts generated morphology into dictionary evidence");
-        Check(StreamingEntry.Read(JsonSerializer.Serialize(entry, Json.Options), "glim")?.WordForms == null,
+        Check(StreamingEntry.Read(JsonSerializer.Serialize(entry, Json.Flexible), "glim")?.WordForms == null,
             "streaming previews do not expose partially completed morphology");
-        try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry with { WordForms = null }, Json.Options), "glim", null, true); Check(false, "missing new morphology field"); }
+        try { CodexDictionary.ParseAndValidate(JsonSerializer.Serialize(entry with { WordForms = null }, Json.Flexible), "glim", null, true); Check(false, "missing new morphology field"); }
         catch (InvalidDataException) { Check(true, "new model responses must explicitly supply morphology or an empty array"); }
 
         var settings = new AppSettings { Provider = "codex", Model = "test", ParallelLookup = false, MergeSenses = false };

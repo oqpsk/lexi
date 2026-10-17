@@ -53,5 +53,7 @@ public sealed class SavedQueries(Cache cache)
         Translation.Parse(JsonSerializer.Serialize(saved.Entry, Json.Options), text, target);
         await cache.WriteAsync(TranslationKind, TranslationIdentity(text, target), saved, token);
     }
-    private static string TranslationIdentity(string text, string target) => JsonSerializer.Serialize(new { text, target }, Json.Options);
+    private static string TranslationIdentity(string text, string target) => JsonSerializer.Serialize(new TranslationIdentity(text, target), Json.Options);
 }
+
+internal sealed record TranslationIdentity(string Text, string Target);

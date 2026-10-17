@@ -31,10 +31,10 @@ internal static class WordFormChecks
             WordForms.ParseEnglishHtml("<p>ordinary mention: " + Field("plural", "imagined") + "</p>", "source").Length == 0,
             "missing headword metadata never guesses or extracts forms from ordinary prose");
         var entry = new PronunciationEntry("mog", [], "https://example.org/mog", DateTimeOffset.UtcNow, forms);
-        var saved = JsonSerializer.Deserialize<PronunciationEntry>(JsonSerializer.Serialize(entry, Json.Options), Json.Options)!;
+        var saved = JsonSerializer.Deserialize<PronunciationEntry>(JsonSerializer.Serialize(entry, Json.Flexible), Json.Flexible)!;
         Check(saved.Forms!.Single().Forms.Single(f => f.Kind == "i").Words.Single() == "mogging" && saved.Forms![0].SourceUrl == entry.SourceUrl,
             "word forms and attribution survive the same cache round trip used for offline metadata");
-        var legacy = JsonSerializer.Deserialize<PronunciationEntry>("{\"word\":\"word\",\"ipa\":[\"/wɜːd/\"],\"sourceUrl\":\"source\",\"fetchedAt\":\"2026-01-01T00:00:00Z\"}", Json.Options);
+        var legacy = JsonSerializer.Deserialize<PronunciationEntry>("{\"word\":\"word\",\"ipa\":[\"/wɜːd/\"],\"sourceUrl\":\"source\",\"fetchedAt\":\"2026-01-01T00:00:00Z\"}", Json.Flexible);
         Check(legacy is { Forms: null, Ipa.Length: 1 }, "legacy pronunciation caches remain readable without forms");
         Console.WriteLine($"{count} online word-form checks passed");
     }

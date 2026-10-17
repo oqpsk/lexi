@@ -106,8 +106,8 @@ internal static class ElevenSpeechChecks
             try { await client.ElevenVoicesAsync("synthetic",cancel.Token); Check(false,"voice cancellation"); }
             catch (OperationCanceledException) { Check(true,"voice loading preserves caller cancellation for model switches and dialog closure"); }
         }
-        Check(JsonSerializer.Deserialize<AppSettings>("{}",Json.Options)!.SpeechProvider == SpeechCatalog.Local.Provider &&
-            JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(new AppSettings{SpeechProvider="elevenlabs",SpeechModel=options.Model,SpeechVoice=options.Voice,SpeechVoiceName="My voice"},Json.Options),Json.Options)!.SpeechVoiceName == "My voice",
+        Check(JsonSerializer.Deserialize<AppSettings>("{}",Json.Flexible)!.SpeechProvider == SpeechCatalog.Local.Provider &&
+            JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(new AppSettings{SpeechProvider="elevenlabs",SpeechModel=options.Model,SpeechVoice=options.Voice,SpeechVoiceName="My voice"},Json.Flexible),Json.Flexible)!.SpeechVoiceName == "My voice",
             "legacy settings retain local speech and selected ElevenLabs voice names survive settings serialization");
     }
     private static Task<HttpResponseMessage> Reply(string text, HttpStatusCode status=HttpStatusCode.OK) =>

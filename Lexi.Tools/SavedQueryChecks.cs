@@ -35,7 +35,7 @@ internal static class SavedQueryChecks
         var updated = saved with {Pronunciation = saved.Pronunciation with {Text = "/nuː/"}, SavedAt = DateTimeOffset.UtcNow};
         await results.SaveDictionaryAsync(updated, CancellationToken.None);
         Check(new SavedQueries(new Cache(path)).Dictionary("TEE")!.Pronunciation.Text == "/nuː/", "successful explicit refresh replaces the stable saved view atomically");
-        await cache.WriteAsync(SavedQueries.DictionaryKind, "broken", new { version = 1, query = "broken" });
+        await cache.WriteAsync(SavedQueries.DictionaryKind, "broken", JsonDocument.Parse("{\"version\":1,\"query\":\"broken\"}").RootElement);
         Check(results.Dictionary("broken") == null, "incomplete saved-view schemas fall back safely");
         string text = "One paragraph.\n\nAnother paragraph.";
         var translation = new TranslationEntry(Cache.Hash(text), "zh", ["一段。", "另一段。"], "");

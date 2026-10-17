@@ -42,6 +42,9 @@ Rules are grouped by where they apply. Shared behavior belongs to `Lexi.Core` an
 - Restore completed query views without network or automatic age/settings refresh. Only explicit regeneration replaces saved results. Preserve original model/source provenance across setting changes, separate translation identities, and never replace a good saved view with failed regeneration or streaming previews.
 - Use one pale-pink base color (#FFADD2) for all pink UI states, with opacity variants for backgrounds and dark text on solid pink fills.
 
+- Core's JSON is generated at build time (`CoreJson` in Lexi.Core/JsonContext.cs, `HostJson` in the host) so Core also runs under NativeAOT on iOS. Serialize named types only, register each new one, and keep anonymous objects out of Core and the host; `Json.Options` resolves only generated types, so the shared checks fail on a missing one. Front-end files and tools use `Json.Flexible`. Cache keys, hashes and prompts must stay byte-for-byte stable.
+- Where the subscription clients cannot run (iOS, `ModelCatalog.ApiOnly`), models are reached with the user's own OpenAI or Anthropic API keys (`ApiDictionary`) using the same instructions, schemas and validation. Keys arrive through `keys.set`, live only in memory, and never appear in output, files or error text.
+
 ## Windows interface (Lexi.App, WPF)
 
 - Preserve existing executable, IPC, AppUserModelID and userdata identities for upgrade compatibility. Windows keeps the portable `userdata` and `data` folders beside the program.
@@ -63,3 +66,11 @@ Rules are grouped by where they apply. Shared behavior belongs to `Lexi.Core` an
 - Keep window state with the system's restoration. The app is a regular windowed app; closing the window does not quit it.
 - Keys belong to the input method while it is composing text. Text that Core marks as accent stays readable: pale pink is a fill or outline in light appearance, never body text.
 - Build with apple/scripts/build-app.sh and check with `swift test --package-path apple`. Regenerate the protocol fixture with host-check when QueryView changes.
+
+## iOS interface (apple/iOS, SwiftUI, simulator preview)
+
+- A simulator preview until an Apple developer account exists. Build with apple/scripts/build-ios.sh (`--run` installs and opens it). The app depends on `LeXiKit` from the macOS package and never reimplements query logic.
+- Core runs in the app's process through `Lexi.Embed` (NativeAOT with `PublishAotUsingRuntimePack`; no .NET iOS workload), speaking the same host protocol through `EmbeddedTransport`. The library runs one host per process.
+- Follow the iOS Human Interface Guidelines: a floating Liquid Glass search capsule at the bottom with suggestions above it, toolbar items for back/forward, more actions and settings, results on grouped surfaces. Pink only for TL;DR, pale gold parts of speech, the Rosetta Stone for etymology, and the appearance choice, as on macOS.
+- Touch has no hover: definitions and examples offer 朗读 in their long-press menu and are tinted gold while read.
+- Settings start with the OpenAI and Anthropic API keys (Keychain, sent with `keys.set` at launch and on change); the OpenAI key also serves OpenAI speech.

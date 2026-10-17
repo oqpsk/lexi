@@ -16,7 +16,7 @@ internal static class ParallelLive
         var codexModel = arguments.FirstOrDefault(a => a.StartsWith(modelOption, StringComparison.Ordinal))?[modelOption.Length..] ?? "gpt-6-luna";
         var settings = new AppSettings { Provider = "codex", Model = codexModel, ParallelLookup = true, MergeSenses = true };
         claude.Prepare("haiku");
-        var json = new JsonSerializerOptions(Json.Options) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        var json = new JsonSerializerOptions(Json.Flexible) { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         foreach (var query in arguments.Where(a => !a.StartsWith(modelOption, StringComparison.Ordinal)))
         {
             var online = await web.LookupAsync(query, CancellationToken.None);

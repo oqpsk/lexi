@@ -34,6 +34,8 @@ try {
     if ($LASTEXITCODE) { throw 'Platform path, client discovery and Chinese variant checks failed' }
     & dotnet $runner session-check $fixture (Join-Path $root '.cache/session-checks')
     if ($LASTEXITCODE) { throw 'Shared query session checks failed' }
+    & dotnet $runner api-check $fixture (Join-Path $root '.cache/api-checks')
+    if ($LASTEXITCODE) { throw 'Model API checks failed' }
     & dotnet $runner host-check $fixture (Join-Path $root '.cache/host-checks') (Join-Path $root 'Lexi.Host/bin/Release/net10.0/lexi-host.dll')
     if ($LASTEXITCODE) { throw 'Host protocol checks failed' }
     if ($windows) {

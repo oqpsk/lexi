@@ -120,7 +120,7 @@ internal static class PlatformChecks
         index.Write("LEXI1"); index.Write(entries.Length);
         foreach (var (key, entry) in entries.OrderBy(e => e.Key, StringComparer.Ordinal))
         {
-            var bytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(entry, Json.Options);
+            var bytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(entry, Json.Flexible);
             index.Write(key); index.Write(data.Position); index.Write(bytes.Length); index.Write(entry.Frequency); data.Write(bytes);
         }
         index.Write(0);

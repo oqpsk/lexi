@@ -4,6 +4,7 @@
     "projects": [
       "Lexi.Core\\Lexi.Core.csproj",
       "Lexi.Host\\Lexi.Host.csproj",
+      "Lexi.Embed\\Lexi.Embed.csproj",
       "Lexi.Tools\\Lexi.Tools.csproj"
     ]
   }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Linked into the binary (Package.swift): the Simulator keychain needs an application identifier; no team is required. -->
+	<key>application-identifier</key><string>LEXISIMULATOR.io.github.oqpsk.lexi</string>
+	<key>keychain-access-groups</key><array><string>LEXISIMULATOR.io.github.oqpsk.lexi</string></array>
+</dict>
+</plist>

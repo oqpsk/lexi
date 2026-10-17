@@ -38,7 +38,7 @@ jobs:
   # SwiftUI app. The WPF front end is validated only by the Windows job.
   macos:
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,11 +57,22 @@ jobs:
             -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=none \
             --source https://api.nuget.org/v3/index.json -o .cache/host-publish
           dotnet Lexi.Tools/bin/Release/net10.0/Lexi.Tools.dll host-check .cache/test-dictionary .cache/host-published .cache/host-publish/lexi-host
-      - name: Swift tests against the published host
+      # The iOS app runs Core in-process from this NativeAOT library; the Swift tests load a macOS build of it.
+      - name: Publish the embedded host library
         shell: bash
-        run: LEXI_HOST="$PWD/.cache/host-publish/lexi-host" swift test --package-path apple
+        run: |
+          dotnet publish Lexi.Embed/Lexi.Embed.csproj -c Release -r osx-arm64 \
+            --source https://api.nuget.org/v3/index.json -o .cache/embed-publish
+      - name: Swift tests against the published host and library
+        shell: bash
+        run: LEXI_HOST="$PWD/.cache/host-publish/lexi-host" LEXI_EMBED="$PWD/.cache/embed-publish/LexiEmbed.dylib" swift test --package-path apple
       - name: Build the app bundle
         shell: bash
         run: |
           apple/scripts/build-app.sh "$RUNNER_TEMP/macos"
           codesign --verify --deep --strict "$RUNNER_TEMP/macos/LeXi.app"
+      - name: Build the iOS Simulator app
+        shell: bash
+        run: |
+          apple/scripts/build-ios.sh "$RUNNER_TEMP/ios"
+          codesign --verify --deep --strict "$RUNNER_TEMP/ios/LeXi.app"

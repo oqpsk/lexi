@@ -105,7 +105,7 @@ public sealed class DictionaryCoordinator(Cache cache,
             }
             if (plan == null)
             {
-                plan = await judge(request, settings.ForModel(new("codex", settings.JudgeModel)), token);
+                plan = await judge(request, settings.ForModel(ModelCatalog.Judge(settings)), token);
                 plan = SenseMerging.Parse(JsonSerializer.Serialize(plan, Json.Options), request);
                 token.ThrowIfCancellationRequested();
                 await Write(SenseMerging.CacheKind, mergeKey, plan, token);

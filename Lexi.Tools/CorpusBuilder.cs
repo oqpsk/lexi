@@ -119,7 +119,7 @@ internal static class CorpusBuilder
         else throw new ArgumentException("Unknown corpus format: " + format);
         if (entries.Count == 0) throw new InvalidDataException("Empty dictionary; nothing was installed");
         Write(folder, entries);
-        File.WriteAllText(Path.Combine(folder, "dictionary.json"), JsonSerializer.Serialize(metadata, Json.Options));
+        File.WriteAllText(Path.Combine(folder, "dictionary.json"), JsonSerializer.Serialize(metadata, Json.Flexible));
         Console.WriteLine($"{metadata.Id}: built {entries.Count:N0} lookup entries");
     }
     private static string Join(string left, string right) => string.IsNullOrEmpty(right) || left == right ? left : string.IsNullOrEmpty(left) ? right : left + "\n\n" + right;
@@ -145,7 +145,7 @@ internal static class CorpusBuilder
         index.Write("LEXI1"); index.Write(entries.Count);
         foreach (var (key, entry) in entries.OrderBy(e => e.Key, StringComparer.Ordinal))
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(entry, Json.Options);
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(entry, Json.Flexible);
             index.Write(key); index.Write(data.Position); index.Write(bytes.Length); index.Write(0); data.Write(bytes);
         }
         index.Write(0);
